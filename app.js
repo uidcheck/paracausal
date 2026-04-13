@@ -188,6 +188,79 @@ async function ensurePhaseTwoColumns(db) {
   await ensureColumnExists(db, 'project_updates', 'linked_video_id', 'INTEGER');
 }
 
+async function ensureHomepageSectionColumns(db) {
+  const homepageSectionsTable = await db.get(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'homepage_sections'`
+  );
+  if (!homepageSectionsTable) {
+    return;
+  }
+
+  await ensureColumnExists(db, 'homepage_sections', 'title_override', 'TEXT');
+  await ensureColumnExists(db, 'homepage_sections', 'body_text', 'TEXT');
+  await ensureColumnExists(db, 'homepage_sections', 'item_limit', 'INTEGER NOT NULL DEFAULT 6');
+  await ensureColumnExists(db, 'homepage_sections', 'enabled', 'INTEGER NOT NULL DEFAULT 1');
+  await ensureColumnExists(db, 'homepage_sections', 'linked_release_id', 'INTEGER');
+  await ensureColumnExists(db, 'homepage_sections', 'linked_track_id', 'INTEGER');
+  await ensureColumnExists(db, 'homepage_sections', 'linked_video_id', 'INTEGER');
+  await ensureColumnExists(db, 'homepage_sections', 'linked_gallery_id', 'INTEGER');
+  await ensureColumnExists(db, 'homepage_sections', 'linked_collection_id', 'INTEGER');
+  await ensureColumnExists(db, 'homepage_sections', 'source_group', 'TEXT');
+  await ensureColumnExists(db, 'homepage_sections', 'filter_tag', 'TEXT');
+  await ensureColumnExists(db, 'homepage_sections', 'accent_colour', 'TEXT');
+  await ensureColumnExists(db, 'homepage_sections', 'style_mode', "TEXT NOT NULL DEFAULT 'default'");
+
+  await db.exec(
+    `UPDATE homepage_sections
+     SET enabled = CASE
+       WHEN COALESCE(enabled, 0) IN (0, 1) THEN COALESCE(enabled, 1)
+       ELSE 1
+     END`
+  );
+  await db.exec(
+    `UPDATE homepage_sections
+     SET item_limit = CASE
+       WHEN item_limit IS NULL OR item_limit < 1 THEN 6
+       WHEN item_limit > 24 THEN 24
+       ELSE item_limit
+     END`
+  );
+  await db.exec(
+    `UPDATE homepage_sections
+     SET style_mode = 'default'
+     WHERE TRIM(COALESCE(style_mode, '')) = ''`
+  );
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_homepage_sections_enabled ON homepage_sections(enabled)');
+}
+
+async function ensureAnalyticsColumns(db) {
+  const analyticsTable = await db.get(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'analytics_page_views'`
+  );
+  if (!analyticsTable) {
+    return;
+  }
+
+  await ensureColumnExists(db, 'analytics_page_views', 'content_type', 'TEXT');
+  await ensureColumnExists(db, 'analytics_page_views', 'content_id', 'INTEGER');
+  await ensureColumnExists(db, 'analytics_page_views', 'content_slug', 'TEXT');
+  await ensureColumnExists(db, 'analytics_page_views', 'referrer_host', 'TEXT');
+  await ensureColumnExists(db, 'analytics_page_views', 'viewed_at', 'DATETIME');
+
+  await db.exec(
+    `UPDATE analytics_page_views
+     SET viewed_at = CURRENT_TIMESTAMP
+     WHERE viewed_at IS NULL OR TRIM(COALESCE(viewed_at, '')) = ''`
+  );
+
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_analytics_page_views_viewed_at ON analytics_page_views(viewed_at)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_analytics_page_views_request_path ON analytics_page_views(request_path)');
+  await db.exec('CREATE INDEX IF NOT EXISTS idx_analytics_page_views_page_type ON analytics_page_views(page_type)');
+  await db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_analytics_page_views_content ON analytics_page_views(content_type, content_id, content_slug)'
+  );
+}
+
 async function ensureProjectStatusColumn(db) {
   try {
     await db.exec(`ALTER TABLE projects ADD COLUMN project_status TEXT NOT NULL DEFAULT '${ONGOING_PROJECT_STATUS}'`);
@@ -425,6 +498,39 @@ async function ensureContentSlugColumns(db) {
   }
 }
 
+function normalizeSchemaStatement(statement) {
+  return statement.replace(/^\s*--.*$/gm, '').trim();
+}
+
+async function applySchemaWithCompatibility(db, schema) {
+  try {
+    await db.exec(schema);
+    return;
+  } catch (err) {
+    if (!/no such (column|table):/i.test(err.message)) {
+      throw err;
+    }
+  }
+
+  const statements = schema
+    .split(/;\s*(?:\r?\n|$)/)
+    .map(normalizeSchemaStatement)
+    .filter(Boolean);
+
+  for (const statement of statements) {
+    try {
+      await db.exec(statement);
+    } catch (err) {
+      const isCreateIndexStatement = /^CREATE\s+(UNIQUE\s+)?INDEX\b/i.test(statement);
+      if (isCreateIndexStatement && /no such (column|table):/i.test(err.message)) {
+        continue;
+      }
+
+      throw err;
+    }
+  }
+}
+
 (async () => {
   ensureDbDirectoryExists();
   console.log(`Using SQLite database at: ${DB_FILE_PATH}`);
@@ -440,12 +546,14 @@ async function ensureContentSlugColumns(db) {
   // Run schema to ensure all tables exist
   const schemaPath = path.join(__dirname, 'database', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
-  await db.exec(schema);
+  await applySchemaWithCompatibility(db, schema);
+  await ensureAnalyticsColumns(db);
   await pruneOldAnalyticsEvents(db, process.env.ANALYTICS_RETENTION_DAYS);
   await ensureTwoFactorColumns(db);
   await ensurePublicationStatusColumns(db);
   await ensurePreviewTokenColumns(db);
   await ensurePhaseTwoColumns(db);
+  await ensureHomepageSectionColumns(db);
   await ensureProjectStatusColumn(db);
   await ensureSortOrderColumns(db);
   await ensureContentSlugColumns(db);

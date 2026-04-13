@@ -209,8 +209,9 @@ async function recordAnalyticsPageView(req, event = {}) {
         content_type,
         content_id,
         content_slug,
-        referrer_host
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
+        referrer_host,
+        viewed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       normalizedEvent.requestPath,
       normalizedEvent.pageType,
       normalizedEvent.contentType,

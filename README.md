@@ -73,7 +73,7 @@ PARACAUSAL combines a dark retro-inspired interface with a self-hosted media and
 
 PARACAUSAL can be run directly from the published Docker image.
 
-### Create a folder for the deployment
+### Create or choose a folder for the deployment
 
 Linux/macOS:
 
@@ -120,24 +120,9 @@ services:
       - ./uploads:/app/uploads
 ```
 
-### Create persistent data folders
-
-These folders are mounted into the container so database content and uploads are not lost when recreating the container.
-
-Linux/macOS:
-
-```bash
-mkdir -p data uploads
-```
-
-Windows CMD:
-
-```cmd
-mkdir data
-mkdir uploads
-```
-
 ### Pull and start the container
+
+Docker Compose will create the local `data/` and `uploads/` folders automatically on first start if they do not already exist.
 
 ```bash
 docker compose up -d
@@ -304,7 +289,7 @@ Docker Compose install:
 docker compose stop paracausal
 ```
 
-2. Run the restore command inside the project folder that already contains the mounted `data/` and `uploads/` directories:
+2. Run the restore command inside the same project folder as `docker-compose.yml` so it targets the same `data/` and `uploads/` bind mounts:
 
 ```bash
 node restore-backup.js path/to/paracausal-backup-YYYYMMDD-HHMMSS.zip --yes
@@ -601,6 +586,7 @@ When running with Docker Compose:
 - SQLite database data is stored in `./data`
 - Docker sets `DB_PATH=/app/data/paracausal.db` and mounts `./data:/app/data`
 - Uploaded files are stored in `./uploads`
+- Docker Compose creates `./data` and `./uploads` automatically on first start if they do not exist
 - Recreating the container does not remove your content as long as those folders are preserved
 - You can set `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` in `.env` to bootstrap the first admin account automatically
 
