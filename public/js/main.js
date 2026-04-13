@@ -2131,7 +2131,7 @@ function initMusicPageFeatures() {
 
   tracks.forEach((item, index) => {
     const playButton = item.querySelector('[data-music-card-play]');
-    const detailLink = item.querySelector('.music-card__title-link') || item.querySelector('.music-card__cover-link');
+    const detailLinks = Array.from(item.querySelectorAll('.music-card__title-link, .music-card__cover-link'));
 
     if (playButton) {
       playButton.addEventListener('click', (event) => {
@@ -2143,17 +2143,24 @@ function initMusicPageFeatures() {
       });
     }
 
-    if (detailLink) {
-      item.addEventListener('click', (event) => {
-        if (event.defaultPrevented) return;
-        if (event.target.closest('a, button')) return;
+    detailLinks.forEach((link) => {
+      if (link.dataset.bound === 'true') return;
+      link.dataset.bound = 'true';
 
-        softNavigate(detailLink.href).catch((err) => {
-          console.error('Music card navigation failed:', err);
-          window.location.assign(detailLink.href);
+      link.addEventListener('click', (event) => {
+        event.stopPropagation();
+
+        if (event.defaultPrevented) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (!shouldHandleSoftNav(link)) return;
+
+        event.preventDefault();
+        softNavigate(link.href).catch((err) => {
+          console.error('Music link navigation failed:', err);
+          window.location.assign(link.href);
         });
       });
-    }
+    });
   });
 
   const playlistHeaders = document.querySelectorAll('.playlist-item .playlist-header');
