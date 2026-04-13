@@ -1,13 +1,13 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
-<h2>Music Archive</h2>
+<h2>Music</h2>
 <form method="get" class="search-form">
   <input type="text" name="search" value="<%= search || '' %>" placeholder="Search tracks">
   <% if (playlists && playlists.length) { %>
     <select name="playlist">
       <option value="">All Tracks</option>
       <% playlists.forEach(p => { %>
-        <option value="<%= p.id %>" <%= selectedPlaylist == p.id ? 'selected' : '' %>><%= p.title %></option>
+        <option value="<%= p.slug || p.id %>" <%= selectedPlaylist && selectedPlaylist.id === p.id ? 'selected' : '' %>><%= p.title %></option>
       <% }) %>
     </select>
   <% } %>
@@ -22,7 +22,7 @@
     <% if (playlists && playlists.length) { %>
       <% playlists.forEach(pl => { %>
         <div class="playlist-item">
-          <a href="/music?playlist=<%= pl.id %>" class="playlist-link<%= selectedPlaylist == pl.id ? ' active' : '' %>">
+          <a href="/music?playlist=<%= pl.slug || pl.id %>" class="playlist-link<%= selectedPlaylist && selectedPlaylist.id === pl.id ? ' active' : '' %>">
             <%= pl.title %> (<%= pl.items ? pl.items.length : 0 %>)
           </a>
           <% if (pl.description) { %>
@@ -49,29 +49,35 @@
           <div
             class="music-card"
             data-filename="<%= track.filename %>"
+            data-slug="<%= track.slug || '' %>"
             data-title="<%= track.title %>"
             data-artist="<%= track.artist || '' %>"
             data-album="<%= track.album || '' %>"
             data-year="<%= track.year || '' %>"
             data-description="<%= track.description || '' %>"
-            data-cover-url="<%= track.cover_image ? getArchiveImageUrl('music', track.cover_image) : '' %>"
+            data-tags="<%= encodeURIComponent(JSON.stringify(track.tags || [])) %>"
+            data-cover-url="<%= track.cover_image ? getOriginalImageUrl('music', track.cover_image) : '' %>"
             data-cover-alt="<%= track.title %> cover"
             data-music-id="<%= track.id %>">
-            <div class="cover-container">
-              <% if (track.cover_image) { %>
-                <img src="<%= getArchiveImageUrl('music', track.cover_image) %>" alt="<%= track.title %> cover" class="cover" loading="<%= index < 4 ? 'eager' : 'lazy' %>" decoding="async" width="300" height="300">
-              <% } else { %>
-                <div class="default-cover">
-                  <i class="fas fa-music"></i>
-                </div>
-              <% } %>
-            </div>
-            <h3><%= track.title %></h3>
+            <a href="/music/<%= track.slug %>" class="music-card__cover-link" aria-label="Open <%= track.title %>">
+              <div class="cover-container">
+                <% if (track.cover_image) { %>
+                  <img src="<%= getOriginalImageUrl('music', track.cover_image) %>" alt="<%= track.title %> cover" class="cover" loading="<%= index < 4 ? 'eager' : 'lazy' %>" decoding="async" width="300" height="300">
+                <% } else { %>
+                  <div class="default-cover">
+                    <i class="fas fa-music"></i>
+                  </div>
+                <% } %>
+              </div>
+            </a>
+            <h3><a href="/music/<%= track.slug %>" class="music-card__title-link"><%= track.title %></a></h3>
             <p class="meta">
               <% if (track.artist) { %><span><%= track.artist %></span><% } %>
               <% if (track.album) { %><span><%= track.artist ? ' - ' : '' %><%= track.album %></span><% } %>
               <% if (track.year) { %><span><%= (track.artist||track.album) ? ' (' : '' %><%= track.year %><%= (track.artist||track.album) ? ')' : '' %></span><% } %>
             </p>
+            <button type="button" class="music-card__play-button" data-music-card-play>Play Track</button>
+            <%- include('partials/tag-pills', { tags: track.tags, className: 'tag-pill-row-compact', tagContext: 'music' }) %>
           </div>
         <% }); %>
       <% } else { %>
@@ -91,6 +97,7 @@
         <h4 id="music-detail-title"></h4>
         <p class="music-detail-artist" id="music-detail-artist"></p>
         <dl class="music-detail-meta" id="music-detail-meta"></dl>
+        <div id="music-detail-tags" hidden></div>
         <p class="music-detail-description" id="music-detail-description"></p>
       </div>
     </aside>

@@ -1,5 +1,5 @@
 /**
- * NIGHTVAULT Orphaned Files Cleanup Utility
+ * PARACAUSAL Orphaned Files Cleanup Utility
  * 
  * This script scans the uploads directory and removes files that are no longer
  * referenced in the database. Run this after deletions to clean up orphaned files.
@@ -33,6 +33,8 @@ const EXPECTED_TABLES = [
   'videos',
   'gallery',
   'projects',
+  'releases',
+  'curated_collections',
   'project_documents',
   'project_update_attachments'
 ];
@@ -53,9 +55,19 @@ async function assertExpectedTablesExist(db, dbFilePath) {
   }
 }
 
+function addReferencedUploads(referencedFiles, dir, filename) {
+  if (filename) {
+    referencedFiles.add(`${dir}/${filename}`);
+  }
+}
+
+function isLegacyArchiveVariant(fileName) {
+  return typeof fileName === 'string' && fileName.toLowerCase().endsWith('.archive.webp');
+}
+
 async function main() {
   console.log(`${colors.cyan}==============================================`);
-  console.log(`NIGHTVAULT Orphaned Files Cleanup Utility`);
+  console.log(`PARACAUSAL Orphaned Files Cleanup Utility`);
   console.log(`==============================================`);
   console.log(`Mode: ${dryRun ? colors.yellow + 'DRY RUN (no files will be deleted)' : colors.red + 'LIVE (files will be deleted)'}${colors.reset}\n`);
   console.log(`${colors.cyan}Database path: ${DB_FILE_PATH}${colors.reset}\n`);
@@ -77,7 +89,7 @@ async function main() {
   const music = await db.all('SELECT filename, cover_image FROM music');
   music.forEach(m => {
     if (m.filename) referencedFiles.add(`music/${m.filename}`);
-    if (m.cover_image) referencedFiles.add(`music/${m.cover_image}`);
+    if (m.cover_image) addReferencedUploads(referencedFiles, 'music', m.cover_image);
   });
   console.log(`  Found ${music.length} music tracks`);
 
@@ -94,7 +106,7 @@ async function main() {
   console.log(`${colors.blue}Scanning gallery table...${colors.reset}`);
   const gallery = await db.all('SELECT filename FROM gallery');
   gallery.forEach(g => {
-    if (g.filename) referencedFiles.add(`images/${g.filename}`);
+    if (g.filename) addReferencedUploads(referencedFiles, 'images', g.filename);
   });
   console.log(`  Found ${gallery.length} gallery images`);
 
@@ -102,9 +114,24 @@ async function main() {
   console.log(`${colors.blue}Scanning projects table...${colors.reset}`);
   const projects = await db.all('SELECT hero_image FROM projects');
   projects.forEach(p => {
-    if (p.hero_image) referencedFiles.add(`projects/${p.hero_image}`);
+    if (p.hero_image) addReferencedUploads(referencedFiles, 'projects', p.hero_image);
   });
   console.log(`  Found ${projects.length} projects`);
+
+  // Release covers
+  console.log(`${colors.blue}Scanning releases table...${colors.reset}`);
+  const releases = await db.all('SELECT cover_image FROM releases');
+  releases.forEach(r => {
+    if (r.cover_image) addReferencedUploads(referencedFiles, 'releases', r.cover_image);
+  });
+  console.log(`  Found ${releases.length} releases`);
+
+  console.log(`${colors.blue}Scanning curated_collections table...${colors.reset}`);
+  const curatedCollections = await db.all('SELECT hero_image FROM curated_collections');
+  curatedCollections.forEach((collection) => {
+    if (collection.hero_image) addReferencedUploads(referencedFiles, 'collections', collection.hero_image);
+  });
+  console.log(`  Found ${curatedCollections.length} curated collections`);
 
   // Project documents
   console.log(`${colors.blue}Scanning project_documents table...${colors.reset}`);
@@ -145,8 +172,25 @@ async function main() {
 
         const relPath = `${dir}/${file}`;
         
+        if (isLegacyArchiveVariant(file)) {
+          orphanedFiles.push({
+            dir,
+            file,
+            path: filePath,
+            size: stat.size,
+            reason: 'legacy archive variant',
+          });
+          continue;
+        }
+
         if (!referencedFiles.has(relPath)) {
-          orphanedFiles.push({ dir, file, path: filePath, size: stat.size });
+          orphanedFiles.push({
+            dir,
+            file,
+            path: filePath,
+            size: stat.size,
+            reason: 'unreferenced upload',
+          });
         }
       }
     } catch (err) {
@@ -177,7 +221,7 @@ async function main() {
   };
 
   orphanedFiles.forEach((f, i) => {
-    console.log(`  ${i + 1}. uploads/${f.dir}/${f.file} (${formatSize(f.size)})`);
+    console.log(`  ${i + 1}. uploads/${f.dir}/${f.file} (${formatSize(f.size)}) [${f.reason}]`);
   });
 
   console.log(`\n${colors.cyan}Total space occupied: ${formatSize(totalSize)}${colors.reset}\n`);

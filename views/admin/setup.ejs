@@ -3,8 +3,8 @@
 <section class="setup-shell">
   <div class="setup-panel">
     <p class="setup-eyebrow">ONE-TIME INITIAL SETUP</p>
-    <h2>Initialize NIGHTVAULT Admin Access</h2>
-    <p class="setup-copy">Create the first administrator account for NIGHTVAULT. This setup screen disappears once an admin account exists.</p>
+    <h2>Initialize PARACAUSAL Admin Access</h2>
+    <p class="setup-copy">Create the first administrator account for PARACAUSAL. This setup screen disappears once an admin account exists.</p>
     <form action="/setup" method="post" class="admin-form" data-no-soft-submit="true" autocomplete="off">
       <%- include('../partials/csrf-field') %>
       <label>
@@ -21,7 +21,7 @@
       </label>
       <button type="submit">Create Initial Admin</button>
     </form>
-    <p class="setup-hint">One-time setup. Minimum password length: 8 characters.</p>
+    <p class="setup-hint">One-time setup. Passwords must be at least 8 characters.</p>
   </div>
 </section>
 <%- include('../partials/footer') %>

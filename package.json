@@ -1,16 +1,18 @@
 {
-  "name": "nightvault",
+  "name": "paracausal",
   "version": "1.0.0",
   "description": "Personal creative archive for music, videos, gallery work and projects.",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "seed": "node database/seed.js"
+    "seed": "node database/seed.js",
+    "restore-backup": "node restore-backup.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "bcrypt": "^5.1.1",
     "dotenv": "^17.3.1",
     "ejs": "^3.1.10",
@@ -22,6 +24,8 @@
     "method-override": "^3.0.0",
     "multer": "^1.4.5-lts.1",
     "music-metadata": "^7.14.0",
+    "otplib": "^13.3.0",
+    "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "sqlite": "^4.1.2",
     "sqlite3": "^5.1.7"

@@ -1,0 +1,10 @@
+<%- include('../partials/header') %>
+<%- include('../partials/messages') %>
+<h2>Two-Factor Login</h2>
+<p style="margin-bottom:1rem;">Enter a 6-digit authenticator code or a recovery code for <strong><%= username %></strong>.</p>
+<form action="/login/2fa" method="post" class="admin-form" data-no-soft-submit="true" autocomplete="off">
+  <%- include('../partials/csrf-field') %>
+  <label>Authenticator or Recovery Code: <input type="text" name="code" required autofocus inputmode="numeric" autocomplete="one-time-code"></label>
+  <button type="submit">Verify and Login</button>
+</form>
+<%- include('../partials/footer') %>

@@ -2,22 +2,42 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/gallery" class="back-link">&larr; Back to gallery management</a>
 <h2>Upload Image</h2>
-<form action="/admin/gallery" method="post" enctype="multipart/form-data" class="admin-form">
+<form action="/admin/gallery" method="post" enctype="multipart/form-data" class="admin-form" data-image-title-autofill>
   <%- include('../../partials/csrf-field') %>
-  <label>Title: <input type="text" name="title"></label>
+  <label>Title: <input type="text" name="title" data-image-title-field></label>
+  <label>Slug: <input type="text" name="slug" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only. Numeric-only slugs are not allowed.</p>
   <label>Caption:<textarea name="caption"></textarea></label>
+  <label>Tags: <input type="text" name="tags" placeholder="portrait, monochrome, behind the scenes"></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= option.value === 'published' ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Scheduled Publish Time: <input type="datetime-local" name="published_at"></label>
   <label>Category: <input type="text" name="category"></label>
-  <label>Image File: <input type="file" name="file" accept="image/*" required></label>
+  <label>Image File: <input type="file" name="file" accept="image/*" required data-image-title-source></label>
   <% if (collections && collections.length) { %>
     <label>Collections:
-      <select name="collections" multiple size="4">
-        <% collections.forEach(c => { %>
-          <option value="<%= c.id %>"><%= c.title %></option>
+      <select name="collections" multiple size="5">
+        <% collections.forEach((collection) => { %>
+          <option value="<%= collection.id %>"><%= collection.title %></option>
         <% }) %>
       </select>
     </label>
-    <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
+    <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to assign this image to one or more collections.</p>
   <% } %>
+  <h3>Connected Content</h3>
+  <label>Related Projects:
+    <select name="related_project_ids" multiple size="5">
+      <% relationshipOptions.projects.forEach((project) => { %>
+        <option value="<%= project.id %>" <%= relationshipSelections.relatedProjectIds.includes(project.id) ? 'selected' : '' %>><%= project.title %> (<%= project.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
   <button type="submit">Upload</button>
 </form>
 <%- include('../../partials/footer') %>

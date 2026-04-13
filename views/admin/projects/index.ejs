@@ -2,57 +2,114 @@
 <%- include('../../partials/messages') %>
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Projects Management</h2>
-<a href="/admin/projects/new" class="btn">New Project</a>
-<a href="/admin/collections/projects" class="btn">Manage Collections</a>
-<% if (projects && projects.length) { %>
-  <section class="admin-bulk-root" data-bulk-select-root data-bulk-label-singular="project" data-bulk-label-plural="projects">
-    <div class="admin-bulk-toolbar">
-      <div class="admin-bulk-toolbar-actions">
-        <button type="button" class="btn" data-bulk-select-start>Select Projects</button>
-        <button type="button" class="btn" data-bulk-select-stop hidden>Stop Selecting</button>
-      </div>
-      <form id="projects-bulk-delete-form" action="/admin/projects/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
-        <%- include('../../partials/csrf-field') %>
-        <button type="button" class="btn admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
-        <span class="admin-bulk-selection-count" data-bulk-selection-count>0 projects selected</span>
-      </form>
+<section class="admin-bulk-root music-management-root" data-bulk-select-root data-bulk-label-singular="project" data-bulk-label-plural="projects" data-drag-sort-root data-drag-sort-endpoint="/admin/reorder/projects" data-drag-sort-enabled="<%= !publicationStatusFilter && projects && projects.length > 1 ? 'true' : 'false' %>">
+  <div class="music-management-toolbar">
+    <div class="music-management-toolbar__quick-actions">
+      <a href="/admin/projects/new" class="btn">New Project</a>
+      <a href="/admin/collections/projects" class="btn">Manage Collections</a>
     </div>
-    <ul class="admin-list">
+    <div class="music-management-toolbar__controls">
+      <form method="get" class="search-form admin-list-filter music-management-filter">
+        <select name="publication_status" aria-label="Filter by publication status">
+          <option value="">All statuses</option>
+          <% publicationStatusOptions.forEach((option) => { %>
+            <option value="<%= option.value %>" <%= publicationStatusFilter === option.value ? 'selected' : '' %>><%= option.label %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary">Filter</button>
+      </form>
+      <% if (projects && projects.length) { %>
+        <div class="admin-bulk-toolbar">
+          <div class="admin-bulk-toolbar-actions">
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary" data-bulk-select-start aria-pressed="false">Select Projects</button>
+          </div>
+          <form id="projects-bulk-delete-form" action="/admin/projects/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
+            <%- include('../../partials/csrf-field') %>
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--danger admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
+            <span class="admin-bulk-selection-count" data-bulk-selection-count>0 projects selected</span>
+          </form>
+          <p class="drag-sort-feedback" data-drag-sort-feedback hidden></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+<% if (projects && projects.length) { %>
+    <ul class="admin-list" data-drag-sort-list>
     <% projects.forEach(p => { %>
-      <li data-bulk-select-item>
+      <li data-bulk-select-item data-drag-sort-item data-drag-sort-id="<%= p.id %>">
         <label class="bulk-select-checkbox-wrap">
           <input type="checkbox" name="selected_ids" value="<%= p.id %>" data-bulk-select-checkbox form="projects-bulk-delete-form">
           <span>Select</span>
         </label>
+        <button type="button" class="drag-sort-handle" data-drag-sort-handle aria-label="Drag to reorder projects" title="Drag to reorder">
+          <span class="drag-sort-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
         <span class="item-title"><%= p.title %></span>
+        <span class="status-badge status-badge-<%= p.publication_status || 'published' %>"><%= formatPublicationStatusLabel(p.publication_status) %></span>
+        <span class="item-meta-text">Lifecycle: <%= p.projectStatusLabel %></span>
+        <span class="item-meta-text">Updates: <%= projectUpdateCounts && Number.isFinite(projectUpdateCounts[p.id]) ? projectUpdateCounts[p.id] : 0 %></span>
+        <%- include('../../partials/tag-pills', { tags: p.tags, className: 'tag-pill-row-admin' }) %>
         <% const count = projectCollections[p.id] ? projectCollections[p.id].length : 0; %>
         <div class="admin-item-actions">
-          <button type="button" class="toggle-membership">Collections (<%= count %>)</button>
+          <% if (collections && collections.length) { %>
+            <button type="button" class="toggle-membership" aria-expanded="false">Collections <span class="toggle-membership__count"><%= count %></span></button>
+          <% } %>
+          <button type="button" class="project-quick-update-toggle" data-project-update-toggle aria-expanded="false" aria-controls="project-quick-update-<%= p.id %>">Add Update</button>
           <a href="/admin/projects/<%= p.id %>/edit">edit</a> |
           <form action="/admin/projects/<%= p.id %>?_method=DELETE" method="post" style="display:inline;">
             <%- include('../../partials/csrf-field') %>
             <button type="submit" class="link-button">delete</button>
           </form>
         </div>
-        <div class="membership-panel" style="display:none;">
-          <form method="post" action="/admin/projects/<%= p.id %>/collections">
+        <div id="project-quick-update-<%= p.id %>" class="project-quick-update-panel" data-project-update-panel hidden>
+          <form action="/admin/projects/<%= p.id %>/updates" method="post" enctype="multipart/form-data" class="project-quick-update-form">
             <%- include('../../partials/csrf-field') %>
-            <% if (collections && collections.length) { %>
-              <% collections.forEach(c => { %>
-                <label style="display:block; font-size:0.85rem;">
-                  <input type="checkbox" name="collections" value="<%= c.id %>" <%= projectCollections[p.id] && projectCollections[p.id].some(m=>m.id===c.id) ? 'checked' : '' %> > <%= c.title %>
-                </label>
-              <% }) %>
-            <% } %>
-            <button type="submit" class="btn">Save</button>
+            <input type="hidden" name="return_to" value="/admin/projects">
+            <div class="project-quick-update-panel__header">
+              <div>
+                <h3>Quick Add Update</h3>
+              </div>
+              <button type="button" class="project-quick-update-panel__close" data-project-update-close aria-label="Close quick update panel">Close</button>
+            </div>
+            <label>Update Title:<input type="text" name="title" placeholder="Title"></label>
+            <label class="admin-checkbox-option"><input type="checkbox" name="is_pinned" value="1"> Pin this update</label>
+            <label>Update Content:<textarea name="content" required></textarea></label>
+            <div class="project-quick-update-form__media-grid">
+              <label>Update Image: <input type="file" name="image" accept="image/*"></label>
+              <label>Attachments: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>
+            </div>
+            <div class="project-quick-update-panel__actions">
+              <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary">Add Update</button>
+            </div>
           </form>
         </div>
+        <% if (collections && collections.length) { %>
+          <div class="membership-panel" hidden>
+            <form method="post" action="/admin/projects/<%= p.id %>/collections">
+              <%- include('../../partials/csrf-field') %>
+              <% collections.forEach((collection) => { %>
+                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem;">
+                  <input type="checkbox" name="collections" value="<%= collection.id %>" <%= projectCollections[p.id] && projectCollections[p.id].some((member) => member.id === collection.id) ? 'checked' : '' %>> <%= collection.title %>
+                </label>
+              <% }) %>
+              <button type="submit" class="btn" style="margin-top:0.5rem;">Save</button>
+            </form>
+          </div>
+        <% } %>
       </li>
     <% }) %>
     </ul>
     <%- include('../../partials/admin-bulk-confirm-modal') %>
-  </section>
 <% } else { %>
   <p>No projects yet.</p>
 <% } %>
+</section>
 <%- include('../../partials/footer') %>

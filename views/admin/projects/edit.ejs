@@ -2,31 +2,78 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/projects" class="back-link">&larr; Back to project management</a>
 <h2>Edit Project</h2>
-<form action="/admin/projects/<%= proj.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form">
+<%- include('../../partials/admin-copy-link-actions', { publicationStatus: proj.publication_status, publicUrl, previewUrl }) %>
+<form action="/admin/projects/<%= proj.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form" data-image-title-autofill>
   <%- include('../../partials/csrf-field') %>
-  <label>Title: <input type="text" name="title" value="<%= proj.title %>" required></label>
+  <label>Title: <input type="text" name="title" value="<%= proj.title %>" required data-image-title-field></label>
+  <label>Slug: <input type="text" name="slug" value="<%= proj.slug || '' %>" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only.</p>
   <label>Summary:<textarea name="summary"><%= proj.summary %></textarea></label>
   <label>Description:<textarea name="description"><%= proj.description %></textarea></label>
-  <label>Status: <input type="text" name="status" value="<%= proj.status %>"></label>
-  <label>Tags: <input type="text" name="tags" value="<%= proj.tags %>"></label>
-  <label>Hero Image: <input type="file" name="hero_image" accept="image/*"></label>
-  <label>Additional Documents: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>  <% if (collections && collections.length) { %>
+  <label>Lifecycle Status:
+    <select name="project_status">
+      <% projectStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (proj.project_status || 'ongoing') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Publication Status:
+    <select name="publication_status" data-scheduled-status-toggle>
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (proj.publication_status || 'published') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <div data-scheduled-publish-field aria-hidden="<%= (proj.publication_status || 'published') === 'scheduled' ? 'false' : 'true' %>" <%= (proj.publication_status || 'published') === 'scheduled' ? '' : 'hidden' %>>
+    <label>Scheduled Publish Time: <input type="datetime-local" name="published_at" value="<%= toDateTimeLocalValue(proj.published_at) %>" data-scheduled-publish-input></label>
+  </div>
+  <label>Tags: <input type="text" name="tags" value="<%= proj.tagInput || '' %>" placeholder="research, installation, field notes"></label>
+  <label>Hero Image: <input type="file" name="hero_image" accept="image/*" data-image-title-source></label>
+  <label>Documents: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>
+  <% if (collections && collections.length) { %>
     <label>Collections:
-      <select name="collections" multiple size="4">
-        <% collections.forEach(c => { %>
-          <option value="<%= c.id %>" <%= collectionIds && collectionIds.includes(c.id) ? 'selected' : '' %>><%= c.title %></option>
+      <select name="collections" multiple size="5">
+        <% collections.forEach((collection) => { %>
+          <option value="<%= collection.id %>" <%= collectionIds && collectionIds.includes(collection.id) ? 'selected' : '' %>><%= collection.title %></option>
         <% }) %>
       </select>
     </label>
-    <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
-  <% } %>  <button type="submit">Update</button>
+    <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to update collection membership.</p>
+  <% } %>
+  <h3>Connected Content</h3>
+  <label>Related Tracks:
+    <select name="related_track_ids" multiple size="5">
+      <% relationshipOptions.tracks.forEach((track) => { %>
+        <option value="<%= track.id %>" <%= relationshipSelections.relatedTrackIds.includes(track.id) ? 'selected' : '' %>><%= track.title %> <% if (track.artist) { %>- <%= track.artist %><% } %> (<%= track.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Videos:
+    <select name="related_video_ids" multiple size="5">
+      <% relationshipOptions.videos.forEach((video) => { %>
+        <option value="<%= video.id %>" <%= relationshipSelections.relatedVideoIds.includes(video.id) ? 'selected' : '' %>><%= video.title %> (<%= video.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Gallery:
+    <select name="related_gallery_ids" multiple size="5">
+      <% relationshipOptions.galleryItems.forEach((image) => { %>
+        <option value="<%= image.id %>" <%= relationshipSelections.relatedGalleryIds.includes(image.id) ? 'selected' : '' %>><%= image.title %> (<%= image.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
+  <button type="submit">Update</button>
 </form>
 
 <h3 style="margin-top: 2rem;">Add New Update</h3>
 <form action="/admin/projects/<%= proj.id %>/updates" method="post" enctype="multipart/form-data" class="admin-form">
   <%- include('../../partials/csrf-field') %>
+  <label>Update Title:<input type="text" name="title" placeholder="Milestone title"></label>
+  <label class="admin-checkbox-option"><input type="checkbox" name="is_pinned" value="1"> Pin this update</label>
   <label>Update Content:<textarea name="content" required></textarea></label>
-  <label>Attachments (optional): <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>
+  <label>Update Image: <input type="file" name="image" accept="image/*"></label>
+  <label>Attachments: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>
   <button type="submit">Add Update</button>
 </form>
 
@@ -36,7 +83,14 @@
     <% updates.forEach(u => { %>
       <li>
         <span class="update-timestamp"><%= new Date(u.created_at).toLocaleString() %></span>
+        <% if (u.is_pinned) { %><span class="status-badge">Pinned</span><% } %>
+        <% if (u.title) { %><strong class="update-content"><%= u.title %></strong><% } %>
         <span class="update-content"><%= u.content %></span>
+        <% if (u.image_filename) { %>
+          <div style="margin-top:0.75rem;">
+            <img src="/uploads/projects/<%= u.image_filename %>" alt="Update image" style="max-width:180px; border:1px solid #333;">
+          </div>
+        <% } %>
         <% if (u.attachments && u.attachments.length) { %>
           <ul class="update-attachments">
             <% u.attachments.forEach(att => { %>

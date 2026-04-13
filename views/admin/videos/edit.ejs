@@ -2,16 +2,27 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/videos" class="back-link">&larr; Back to video management</a>
 <h2>Edit Video</h2>
+<%- include('../../partials/admin-copy-link-actions', { publicationStatus: video.publication_status, publicUrl, previewUrl }) %>
 <form action="/admin/videos/<%= video.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form">
   <%- include('../../partials/csrf-field') %>
   <label>Title: <input type="text" name="title" value="<%= video.title %>" required></label>
+  <label>Slug: <input type="text" name="slug" value="<%= video.slug || '' %>" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only. Numeric-only slugs are not allowed.</p>
   <label>Description:<textarea name="description"><%= video.description %></textarea></label>
-  <label>Category: <input type="text" name="category" value="<%= video.category %>"></label>
+  <label>Tags: <input type="text" name="tags" value="<%= video.tagInput || '' %>" placeholder="performance, tutorial, archive"></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (video.publication_status || 'published') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Scheduled Publish Time: <input type="datetime-local" name="published_at" value="<%= toDateTimeLocalValue(video.published_at) %>"></label>
   <label>Video File: <input type="file" name="file" accept="video/*"></label>
   <% if (video.filename) { %>
-    <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Leave the file field empty to keep the current uploaded video, or choose a new file to replace it.</p>
+    <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Leave blank to keep the current video.</p>
   <% } else { %>
-    <p style="font-size:0.8rem;color:#f2b8b8; margin-top:-0.5rem;">This record does not have a local video file. Upload one now to keep it, or delete the record.</p>
+    <p style="font-size:0.8rem;color:#f2b8b8; margin-top:-0.5rem;">This record has no video file. Upload one now or delete the record.</p>
   <% } %>
   <% if (playlists && playlists.length) { %>
     <label>Playlists:
@@ -23,6 +34,8 @@
     </label>
     <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
   <% } %>
+  <h3>Connected Content</h3>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
   <button type="submit">Update</button>
 </form>
 <%- include('../../partials/footer') %>

@@ -3,40 +3,47 @@
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Project Collections</h2>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-  <div>
-    <h3>Create New Collection</h3>
+<div class="admin-split-layout">
+  <section class="admin-section-card">
+    <h3>Create Project Collection</h3>
     <form action="/admin/collections/projects" method="post" class="admin-form">
       <%- include('../../partials/csrf-field') %>
-      <label>Title: <input type="text" name="title" required></label>
-      <label>Description: <textarea name="description"></textarea></label>
-      <button type="submit">Create</button>
+      <label>Title
+        <input type="text" name="title" required>
+      </label>
+      <label>Description
+        <textarea name="description" rows="4"></textarea>
+      </label>
+      <button type="submit">Create Collection</button>
     </form>
-  </div>
+  </section>
 
-  <div>
-    <h3>Collections</h3>
+  <section class="admin-section-card">
+    <h3>Existing Collections</h3>
     <% if (collections && collections.length) { %>
       <ul class="admin-list">
-        <% collections.forEach(c => { %>
+        <% collections.forEach((collection) => { %>
           <li>
-            <strong><%= c.title %></strong>
-            <% if (c.description) { %><p style="font-size: 0.85rem; color: #888; margin: 0.3rem 0;"><%= c.description %></p><% } %>
-            <p style="font-size: 0.8rem; color: #666; margin: 0.2rem 0 0.5rem;">Projects: <%= c.item_count || 0 %></p>
-            <a href="/admin/collections/projects/<%= c.id %>/edit">edit</a> |
-            <form action="/admin/collections/projects/<%= c.id %>?_method=DELETE" method="post" style="display:inline;">
-              <%- include('../../partials/csrf-field') %>
-              <button type="submit" class="link-button">delete</button>
-            </form>
+            <span class="item-title"><strong><%= collection.title %></strong></span>
+            <span class="item-meta-text"><%= collection.item_count || 0 %> projects</span>
+            <% if (collection.description) { %>
+              <p class="admin-section-note"><%= collection.description %></p>
+            <% } %>
+            <div class="admin-item-actions">
+              <a href="/admin/collections/projects/<%= collection.id %>/edit">edit</a> |
+              <form action="/admin/collections/projects/<%= collection.id %>?_method=DELETE" method="post" style="display:inline;">
+                <%- include('../../partials/csrf-field') %>
+                <button type="submit" class="link-button">delete</button>
+              </form>
+            </div>
           </li>
         <% }) %>
       </ul>
     <% } else { %>
-      <p>No collections yet.</p>
+      <p>No project collections yet.</p>
     <% } %>
-  </div>
+  </section>
 </div>
 
-<h3 style="margin-top: 2rem;">Assign Projects</h3>
-<p style="color: #888; font-size: 0.9rem;">Use <a href="/admin/projects">Projects Management</a> to assign or unassign collection memberships with checkboxes.</p>
+<p class="admin-section-note" style="margin-top:1rem;">Assign projects from the projects list or the project edit screen.</p>
 <%- include('../../partials/footer') %>

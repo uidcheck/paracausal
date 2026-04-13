@@ -1,9 +1,8 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
-<h2>Videos Archive</h2>
+<h2>Videos</h2>
 <form method="get" class="search-form">
   <input type="text" name="search" value="<%= search || '' %>" placeholder="Search videos">
-  <input type="text" name="category" value="<%= category || '' %>" placeholder="Category">
   <% if (playlists && playlists.length) { %>
     <select name="playlist">
       <option value="">All Videos</option>
@@ -43,7 +42,7 @@
   <div class="video-grid">
     <% if (videos && videos.length) { %>
       <% videos.forEach(video => { %>
-        <a class="video-card" href="/videos/<%= video.id %>" style="display: block;">
+        <a class="video-card" href="/videos/<%= video.slug %>" style="display: block;">
           <% if (video.thumbnail) { %>
             <img src="/uploads/videos/<%= video.thumbnail %>" alt="<%= video.title %>">
           <% } else { %>
@@ -53,9 +52,7 @@
           <% } %>
           <h3><%= video.title %></h3>
           <% if (video.description) { %><p><%= video.description %></p><% } %>
-          <% if (video.category) { %>
-            <p class="meta">Category: <%= video.category %></p>
-          <% } %>
+          <%- include('partials/tag-pills', { tags: video.tags, className: 'tag-pill-row-compact', tagContext: 'videos' }) %>
         </a>
       <% }) %>
     <% } else { %>

@@ -16,7 +16,7 @@
   </label>
   <label>Description: <textarea name="description"><%= link.description || '' %></textarea></label>
   <label>Order Index: <input type="number" name="order_index" value="<%= link.order_index == null ? '' : link.order_index %>"></label>
-  <p class="admin-section-note">Lower order values appear first. Leave blank to place this link after explicitly ordered items.</p>
+  <p class="admin-section-note">Lower numbers appear first. Leave blank for automatic ordering.</p>
   <button type="submit">Update Link</button>
 </form>
 

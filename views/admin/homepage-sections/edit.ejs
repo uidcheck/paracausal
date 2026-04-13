@@ -1,0 +1,77 @@
+<%- include('../../partials/header') %>
+<%- include('../../partials/messages') %>
+<a href="/admin/homepage" class="back-link">&larr; Back to homepage settings</a>
+<h2>Edit Homepage Section</h2>
+<form action="/admin/homepage-sections/<%= homepageSection.id %>?_method=PUT" method="post" class="admin-form">
+  <%- include('../../partials/csrf-field') %>
+  <label>Section Type
+    <select name="section_type">
+      <% sectionTypeOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= homepageSection.section_type === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Title Override
+    <input type="text" name="title_override" value="<%= homepageSection.title_override || '' %>">
+  </label>
+  <label>Body Text
+    <textarea name="body_text" rows="6"><%= homepageSection.body_text || '' %></textarea>
+  </label>
+  <label>Item Limit
+    <input type="number" name="item_limit" min="1" max="24" value="<%= homepageSection.item_limit || 6 %>">
+  </label>
+  <label>Accent Colour
+    <input type="text" name="accent_colour" value="<%= homepageSection.accent_colour || '' %>" placeholder="#0ff">
+  </label>
+  <label>Style
+    <select name="style_mode">
+      <% styleOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (homepageSection.style_mode || 'default') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label class="admin-checkbox-option"><input type="checkbox" name="enabled" value="1" <%= homepageSection.enabled ? 'checked' : '' %>> Enabled</label>
+
+  <h3>Linked Content</h3>
+  <label>Track
+    <select name="linked_track_id">
+      <option value="">None</option>
+      <% options.tracks.forEach((track) => { %>
+        <option value="<%= track.id %>" <%= homepageSection.linked_track_id === track.id ? 'selected' : '' %>><%= track.title %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Video
+    <select name="linked_video_id">
+      <option value="">None</option>
+      <% options.videos.forEach((video) => { %>
+        <option value="<%= video.id %>" <%= homepageSection.linked_video_id === video.id ? 'selected' : '' %>><%= video.title %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Gallery Item
+    <select name="linked_gallery_id">
+      <option value="">None</option>
+      <% options.galleryItems.forEach((image) => { %>
+        <option value="<%= image.id %>" <%= homepageSection.linked_gallery_id === image.id ? 'selected' : '' %>><%= image.title %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Link Group Source
+    <select name="source_group">
+      <option value="">None</option>
+      <% options.homepageLinkSections.forEach((section) => { %>
+        <option value="<%= section.value %>" <%= homepageSection.source_group === section.value ? 'selected' : '' %>><%= section.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Filter Tag
+    <input type="text" name="filter_tag" value="<%= homepageSection.filter_tag || '' %>" placeholder="ritual, process, live">
+  </label>
+  <button type="submit">Update Section</button>
+</form>
+<form action="/admin/homepage-sections/<%= homepageSection.id %>?_method=DELETE" method="post" class="admin-form" style="margin-top:1.5rem;">
+  <%- include('../../partials/csrf-field') %>
+  <button type="submit" class="link-button" style="color:#a00;">Delete Section</button>
+</form>
+<%- include('../../partials/footer') %>

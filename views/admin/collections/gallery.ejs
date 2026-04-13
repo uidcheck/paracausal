@@ -3,41 +3,47 @@
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Gallery Collections</h2>
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-  <div>
-    <h3>Create New Collection</h3>
+<div class="admin-split-layout">
+  <section class="admin-section-card">
+    <h3>Create Gallery Collection</h3>
     <form action="/admin/collections/gallery" method="post" class="admin-form">
       <%- include('../../partials/csrf-field') %>
-      <label>Title: <input type="text" name="title" required></label>
-      <label>Description: <textarea name="description"></textarea></label>
-      <button type="submit">Create</button>
+      <label>Title
+        <input type="text" name="title" required>
+      </label>
+      <label>Description
+        <textarea name="description" rows="4"></textarea>
+      </label>
+      <button type="submit">Create Collection</button>
     </form>
-  </div>
+  </section>
 
-  <div>
-    <h3>Collections</h3>
+  <section class="admin-section-card">
+    <h3>Existing Collections</h3>
     <% if (collections && collections.length) { %>
       <ul class="admin-list">
-        <% collections.forEach(c => { %>
+        <% collections.forEach((collection) => { %>
           <li>
-            <strong><%= c.title %></strong>
-            <% if (c.description) { %><p style="font-size: 0.85rem; color: #888; margin: 0.3rem 0;"><%= c.description %></p><% } %>
-            <a href="/admin/collections/gallery/<%= c.id %>/edit">edit</a> |
-            <form action="/admin/collections/gallery/<%= c.id %>?_method=DELETE" method="post" style="display:inline;">
-              <%- include('../../partials/csrf-field') %>
-              <button type="submit" class="link-button">delete</button>
-            </form>
+            <span class="item-title"><strong><%= collection.title %></strong></span>
+            <span class="item-meta-text"><%= collection.item_count || 0 %> images</span>
+            <% if (collection.description) { %>
+              <p class="admin-section-note"><%= collection.description %></p>
+            <% } %>
+            <div class="admin-item-actions">
+              <a href="/admin/collections/gallery/<%= collection.id %>/edit">edit</a> |
+              <form action="/admin/collections/gallery/<%= collection.id %>?_method=DELETE" method="post" style="display:inline;">
+                <%- include('../../partials/csrf-field') %>
+                <button type="submit" class="link-button">delete</button>
+              </form>
+            </div>
           </li>
         <% }) %>
       </ul>
     <% } else { %>
-      <p>No collections yet.</p>
+      <p>No gallery collections yet.</p>
     <% } %>
-  </div>
+  </section>
 </div>
 
-<h3 style="margin-top: 2rem;">Add Images to Collection</h3>
-<p style="color: #888; font-size: 0.9rem;">Assign gallery images to collections:</p>
-<!-- This would require database queries in the route -->
-<p style="color: #666; font-size: 0.85rem;">Feature link: Use admin gallery listing to assign images to collections</p>
+<p class="admin-section-note" style="margin-top:1rem;">Assign images from the gallery list or the image edit screen.</p>
 <%- include('../../partials/footer') %>

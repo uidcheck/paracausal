@@ -1,82 +1,203 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
+<%
+  const homepageConfig = homepageSettings || {};
+  const introHeading = homepageConfig.headingOverride || 'Selected Work';
+  const introText = homepageConfig.introText || 'A collection of music, media and experimental projects.';
+  const introTagline = homepageConfig.tagline || '';
+  const visibleSections = Array.isArray(homepageSections) ? homepageSections : [];
+  const activeFeaturedItems = Array.isArray(featuredItems) ? featuredItems : [];
+  const homepageLinkGroups = homepageLinks || { socials: [], other: [] };
+  const socialLinks = homepageLinkGroups.socials || [];
+  const otherLinks = homepageLinkGroups.other || [];
+  const hasHomepageLinks = socialLinks.length || otherLinks.length;
+  const editorialBlocks = Array.isArray(editorialSections) ? editorialSections : [];
+%>
 <section class="intro">
-  <h2>Creative Archive</h2>
-  <p>A collection of music, media and experimental projects.</p>
+  <h2><%= introHeading %></h2>
+  <% if (introTagline) { %>
+    <p class="homepage-subtitle"><%= introTagline %></p>
+  <% } %>
+  <p><%= introText %></p>
   <form action="/search" method="get" class="search-form">
     <input type="text" name="q" placeholder="Search music, videos, gallery, projects..." required>
     <button type="submit">Search</button>
   </form>
 </section>
-<section class="features">
-  <div class="card">
-    <h3>Music</h3>
-    <p>Listen to tracks and albums.</p>
-    <a href="/music" class="btn">Enter</a>
-  </div>
-  <div class="card">
-    <h3>Videos</h3>
-    <p>Watch a curated selection of video work.</p>
-    <a href="/videos" class="btn">Enter</a>
-  </div>
-  <div class="card">
-    <h3>Gallery</h3>
-    <p>Browse images and visual pieces.</p>
-    <a href="/gallery" class="btn">Enter</a>
-  </div>
-  <div class="card">
-    <h3>Projects</h3>
-    <p>Explore ongoing and past projects.</p>
-    <a href="/projects" class="btn">Enter</a>
-  </div>
-</section>
-<%
-  const homepageLinkGroups = homepageLinks || { socials: [], other: [] };
-  const socialLinks = homepageLinkGroups.socials || [];
-  const otherLinks = homepageLinkGroups.other || [];
-  const hasHomepageLinks = socialLinks.length || otherLinks.length;
-%>
-<% if (hasHomepageLinks) { %>
-  <section class="homepage-link-sections" aria-label="Featured links">
-    <% if (socialLinks.length) { %>
-      <section class="homepage-link-section">
-        <div class="homepage-link-section__header">
-          <h3>Socials</h3>
-        </div>
-        <div class="homepage-link-list">
-          <% socialLinks.forEach((link) => { %>
-            <div class="homepage-link-card">
-              <a href="<%= link.url %>" class="homepage-link-card__link" target="_blank" rel="noopener noreferrer">
-                <span class="homepage-link-card__title"><%= link.title %></span>
+<div class="homepage-shell<%= activeFeaturedItems.length ? ' homepage-shell--with-featured' : '' %>">
+  <% if (activeFeaturedItems.length) { %>
+    <aside class="homepage-featured" aria-label="Featured content">
+      <div class="homepage-featured__header">
+        <h3>Featured</h3>
+        <p>Selected highlights from PARACAUSAL.</p>
+      </div>
+      <div class="homepage-featured-grid">
+        <% activeFeaturedItems.forEach((item) => { %>
+          <article class="homepage-featured-card">
+            <% if (item.imageUrl) { %>
+              <a href="<%= item.href %>" class="homepage-featured-card__image-link">
+                <img src="<%= item.imageUrl %>" alt="<%= item.title %>" class="homepage-featured-card__image" loading="lazy" decoding="async">
               </a>
-              <% if (link.description) { %>
-                <span class="homepage-link-card__description"><%= link.description %></span>
+            <% } %>
+            <div class="homepage-featured-card__body">
+              <span class="homepage-featured-card__type"><%= item.type %></span>
+              <h4><a href="<%= item.href %>"><%= item.title %></a></h4>
+              <% if (item.meta) { %>
+                <p class="homepage-featured-card__meta"><%= item.meta %></p>
+              <% } %>
+              <% if (item.description) { %>
+                <p><%= item.description %></p>
               <% } %>
             </div>
-          <% }) %>
-        </div>
+          </article>
+        <% }) %>
+      </div>
+    </aside>
+  <% } %>
+
+  <div class="homepage-main-column">
+    <% if (editorialBlocks.length) { %>
+      <section class="homepage-editorial-stack">
+        <% editorialBlocks.forEach((section) => { %>
+          <section class="homepage-editorial-card homepage-editorial-card--<%= section.styleMode || 'default' %>">
+            <% if (section.renderType === 'manifesto') { %>
+              <% if (section.title) { %><h3><%= section.title %></h3><% } %>
+              <% if (section.bodyText) { %><p><%= section.bodyText %></p><% } %>
+            <% } else if (section.renderType === 'links') { %>
+              <h3><%= section.title %></h3>
+              <% if (section.bodyText) { %><p><%= section.bodyText %></p><% } %>
+              <div class="homepage-link-list">
+                <% section.links.forEach((link) => { %>
+                  <div class="homepage-link-card">
+                    <a href="<%= link.url %>" class="homepage-link-card__link" target="_blank" rel="noopener noreferrer">
+                      <span class="homepage-link-card__title"><%= link.title %></span>
+                    </a>
+                    <% if (link.description) { %>
+                      <span class="homepage-link-card__description"><%= link.description %></span>
+                    <% } %>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else if (section.renderType === 'feature-card') { %>
+              <article class="homepage-featured-card">
+                <% if (section.item.imageUrl) { %>
+                  <a href="<%= section.item.href %>" class="homepage-featured-card__image-link">
+                    <img src="<%= section.item.imageUrl %>" alt="<%= section.item.title %>" class="homepage-featured-card__image" loading="lazy" decoding="async">
+                  </a>
+                <% } %>
+                <div class="homepage-featured-card__body">
+                  <span class="homepage-featured-card__type"><%= section.item.eyebrow %></span>
+                  <h3><a href="<%= section.item.href %>"><%= section.title || section.item.title %></a></h3>
+                  <% if (section.item.meta) { %><p class="homepage-featured-card__meta"><%= section.item.meta %></p><% } %>
+                  <% if (section.bodyText || section.item.description) { %><p><%= section.bodyText || section.item.description %></p><% } %>
+                  <a href="<%= section.item.href %>" class="btn"><%= section.item.actionLabel %></a>
+                </div>
+              </article>
+            <% } else if (section.renderType === 'project-grid') { %>
+              <h3><%= section.title %></h3>
+              <div class="collection-grid">
+                <% section.items.forEach((item) => { %>
+                  <article class="collection-card">
+                    <% if (item.hero_image) { %>
+                      <a href="/projects/<%= item.slug %>" class="collection-card__image-link"><img src="<%= getOriginalImageUrl('projects', item.hero_image) %>" alt="<%= item.title %> hero" class="collection-card__image"></a>
+                    <% } %>
+                    <div class="collection-card__body">
+                      <h4><a href="/projects/<%= item.slug %>"><%= item.title %></a></h4>
+                      <% if (item.summary) { %><p><%= item.summary %></p><% } %>
+                    </div>
+                  </article>
+                <% }) %>
+              </div>
+            <% } else if (section.renderType === 'updates-list') { %>
+              <h3><%= section.title %></h3>
+              <div class="updates-container">
+                <% section.items.forEach((item) => { %>
+                  <article class="update-card">
+                    <div class="update-header">
+                      <span class="update-timestamp"><%= new Date(item.created_at).toLocaleDateString() %></span>
+                      <a href="/projects/<%= item.project_slug %>"><%= item.project_title %></a>
+                    </div>
+                    <% if (item.title) { %><strong><%= item.title %></strong><% } %>
+                    <div class="update-content"><%= item.content %></div>
+                  </article>
+                <% }) %>
+              </div>
+            <% } else if (section.renderType === 'gallery-strip') { %>
+              <h3><%= section.title %></h3>
+              <div class="collection-grid">
+                <% section.items.forEach((item) => { %>
+                  <article class="collection-card">
+                    <% if (item.filename) { %>
+                      <a href="/gallery/<%= item.slug %>" class="collection-card__image-link"><img src="<%= getOriginalImageUrl('images', item.filename) %>" alt="<%= item.title || 'Gallery image' %>" class="collection-card__image"></a>
+                    <% } %>
+                    <div class="collection-card__body">
+                      <h4><a href="/gallery/<%= item.slug %>"><%= item.title || 'Untitled image' %></a></h4>
+                      <% if (item.caption) { %><p><%= item.caption %></p><% } %>
+                    </div>
+                  </article>
+                <% }) %>
+              </div>
+            <% } %>
+          </section>
+        <% }) %>
       </section>
     <% } %>
 
-    <% if (otherLinks.length) { %>
-      <section class="homepage-link-section">
-        <div class="homepage-link-section__header">
-          <h3>Other Links</h3>
-        </div>
-        <div class="homepage-link-list">
-          <% otherLinks.forEach((link) => { %>
-            <div class="homepage-link-card">
-              <a href="<%= link.url %>" class="homepage-link-card__link" target="_blank" rel="noopener noreferrer">
-                <span class="homepage-link-card__title"><%= link.title %></span>
-              </a>
-              <% if (link.description) { %>
-                <span class="homepage-link-card__description"><%= link.description %></span>
-              <% } %>
-            </div>
-          <% }) %>
-        </div>
+    <% if (visibleSections.length) { %>
+      <section class="features">
+        <% visibleSections.forEach((section) => { %>
+          <div class="card">
+            <h3><%= section.title %></h3>
+            <p><%= section.description %></p>
+            <a href="<%= section.href %>" class="btn">Enter</a>
+          </div>
+        <% }) %>
       </section>
     <% } %>
-  </section>
-<% } %>
+
+    <% if (hasHomepageLinks) { %>
+      <section class="homepage-link-sections" aria-label="Featured links">
+        <% if (socialLinks.length) { %>
+          <section class="homepage-link-section">
+            <div class="homepage-link-section__header">
+              <h3>Socials</h3>
+            </div>
+            <div class="homepage-link-list">
+              <% socialLinks.forEach((link) => { %>
+                <div class="homepage-link-card">
+                  <a href="<%= link.url %>" class="homepage-link-card__link" target="_blank" rel="noopener noreferrer">
+                    <span class="homepage-link-card__title"><%= link.title %></span>
+                  </a>
+                  <% if (link.description) { %>
+                    <span class="homepage-link-card__description"><%= link.description %></span>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          </section>
+        <% } %>
+
+        <% if (otherLinks.length) { %>
+          <section class="homepage-link-section">
+            <div class="homepage-link-section__header">
+              <h3>Other Links</h3>
+            </div>
+            <div class="homepage-link-list">
+              <% otherLinks.forEach((link) => { %>
+                <div class="homepage-link-card">
+                  <a href="<%= link.url %>" class="homepage-link-card__link" target="_blank" rel="noopener noreferrer">
+                    <span class="homepage-link-card__title"><%= link.title %></span>
+                  </a>
+                  <% if (link.description) { %>
+                    <span class="homepage-link-card__description"><%= link.description %></span>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          </section>
+        <% } %>
+      </section>
+    <% } %>
+  </div>
+</div>
 <%- include('partials/footer') %>

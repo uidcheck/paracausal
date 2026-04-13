@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+<%- include('../partials/messages') %>
+<a href="/admin" class="back-link">&larr; Back to dashboard</a>
+<h2>Two-Factor Authentication</h2>
+
+<% if (twoFactorEnabled) { %>
+  <section class="card" style="text-align:left; margin-bottom:1rem;">
+    <h3>2FA Enabled</h3>
+    <p style="margin-top:0.6rem;">Login now requires your password and an authenticator code.</p>
+  </section>
+
+  <% if (recoveryCodes && recoveryCodes.length) { %>
+    <section class="card" style="text-align:left; margin-bottom:1rem; border-color:#c99a2e;">
+      <h3>Save These Recovery Codes</h3>
+      <p style="margin-top:0.6rem;">Each recovery code works once. Store them somewhere private before leaving this page.</p>
+      <ul style="margin-top:0.8rem; padding-left:1.2rem; color:#ddd;">
+        <% recoveryCodes.forEach((code) => { %>
+          <li style="margin-bottom:0.35rem;"><code><%= code %></code></li>
+        <% }) %>
+      </ul>
+    </section>
+  <% } %>
+
+  <section class="card" style="text-align:left;">
+    <h3>Disable 2FA</h3>
+    <p style="margin-top:0.6rem;">Enter your current password and an authenticator or recovery code.</p>
+    <form action="/admin/two-factor/disable" method="post" class="admin-form" data-no-soft-submit="true" autocomplete="off" style="margin-top:1rem;">
+      <%- include('../partials/csrf-field') %>
+      <label>Current Password: <input type="password" name="currentPassword" required autocomplete="current-password"></label>
+      <label>Authenticator or Recovery Code: <input type="text" name="code" required autocomplete="one-time-code"></label>
+      <button type="submit">Disable 2FA</button>
+    </form>
+  </section>
+<% } else { %>
+  <section class="card" style="text-align:left; margin-bottom:1rem;">
+    <h3>Enable 2FA</h3>
+    <p style="margin-top:0.6rem;">Scan the QR code or enter the setup key, then confirm with your password and a valid code.</p>
+    <% if (setup && setup.qrCodeDataUrl) { %>
+      <div style="margin:1rem 0;">
+        <img src="<%= setup.qrCodeDataUrl %>" alt="Two-factor setup QR code" width="220" height="220" style="display:block; border:1px solid #333; background:#fff; padding:0.5rem;">
+      </div>
+      <p><strong>Manual setup key:</strong> <code><%= setup.secret %></code></p>
+    <% } %>
+    <form action="/admin/two-factor/enable" method="post" class="admin-form" data-no-soft-submit="true" autocomplete="off" style="margin-top:1rem;">
+      <%- include('../partials/csrf-field') %>
+      <label>Current Password: <input type="password" name="currentPassword" required autocomplete="current-password"></label>
+      <label>Authenticator Code: <input type="text" name="code" required inputmode="numeric" autocomplete="one-time-code"></label>
+      <button type="submit">Enable 2FA</button>
+    </form>
+  </section>
+<% } %>
+<%- include('../partials/footer') %>

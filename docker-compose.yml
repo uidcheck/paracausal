@@ -1,7 +1,7 @@
 services:
-  nightvault:
-    image: ghcr.io/uidcheck/nightvault:latest
-    container_name: nightvault
+  paracausal:
+    image: ghcr.io/uidcheck/paracausal:latest
+    container_name: paracausal
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -10,7 +10,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DB_PATH: /app/data/nightvault.db
+      DB_PATH: /app/data/paracausal.db
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads

@@ -2,6 +2,7 @@
 <%- include('../../partials/messages') %>
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Homepage Links</h2>
+<p class="admin-section-note"><a href="/admin/homepage">Homepage Settings</a></p>
 
 <div class="admin-split-layout">
   <section class="admin-section-card">
@@ -19,7 +20,7 @@
       </label>
       <label>Description: <textarea name="description"></textarea></label>
       <label>Order Index: <input type="number" name="order_index" placeholder="Optional"></label>
-      <p class="admin-section-note">Lower order values appear first. Leave blank to place links after explicitly ordered items.</p>
+      <p class="admin-section-note">Lower numbers appear first. Leave blank for automatic ordering.</p>
       <button type="submit">Create Link</button>
     </form>
   </section>

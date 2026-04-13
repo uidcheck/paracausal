@@ -17,8 +17,20 @@ const {
   parseTrustProxySetting,
   validateCsrfTokenForNonMultipart,
 } = require('./middleware/security');
-const { ensureArchiveVariant, getArchiveImageUrl } = require('./utils/image-variants');
+const { getOriginalImageUrl } = require('./utils/image-variants');
 const { bootstrapInitialAdminFromEnv, getAdminCount, hasAnyAdmin } = require('./utils/admin-setup');
+const { pruneOldAnalyticsEvents } = require('./utils/analytics');
+const {
+  ALL_PUBLICATION_STATUSES,
+  formatPublicationStatusLabel,
+  toDateTimeLocalValue,
+} = require('./utils/content-publication-status');
+const {
+  CLOSED_PROJECT_STATUS,
+  ONGOING_PROJECT_STATUS,
+} = require('./utils/project-status');
+const { generateUniqueSlug } = require('./utils/slugs');
+const { ensureTagTablesReady } = require('./utils/tags');
 
 ffmpeg.setFfmpegPath(ffmpegStatic);
 ffmpeg.setFfprobePath(ffprobeStatic.path);
@@ -28,6 +40,15 @@ const publicRoutes = require('./routes/public');
 const adminRoutes = require('./routes/admin');
 
 const { ensureAdmin } = require('./middleware/auth');
+
+const STYLE_CSS_PATH = path.join(__dirname, 'public', 'css', 'style.css');
+const STYLE_CSS_VERSION = (() => {
+  try {
+    return String(Math.floor(fs.statSync(STYLE_CSS_PATH).mtimeMs));
+  } catch (err) {
+    return String(Date.now());
+  }
+})();
 
 function requestExpectsJson(req) {
   const requestedWith = (req.get('X-Requested-With') || '').toLowerCase();
@@ -59,6 +80,351 @@ function getUserFacingErrorMessage(err, statusCode) {
   return (err && err.message) || 'The request could not be completed.';
 }
 
+async function ensurePublicationStatusColumns(db) {
+  const contentTables = ['music', 'videos', 'gallery', 'projects', 'releases', 'curated_collections'];
+
+  for (const tableName of contentTables) {
+    try {
+      await db.exec(`ALTER TABLE ${tableName} ADD COLUMN publication_status TEXT NOT NULL DEFAULT 'published'`);
+    } catch (err) {
+      if (!/duplicate column name|no such table/i.test(err.message)) {
+        throw err;
+      }
+    }
+
+    try {
+      await db.exec(`ALTER TABLE ${tableName} ADD COLUMN published_at DATETIME`);
+    } catch (err) {
+      if (!/duplicate column name|no such table/i.test(err.message)) {
+        throw err;
+      }
+    }
+
+    const tableExists = await db.get(
+      `SELECT name
+       FROM sqlite_master
+       WHERE type = 'table'
+         AND name = ?`,
+      tableName
+    );
+    if (!tableExists) {
+      continue;
+    }
+
+    await db.exec(
+      `UPDATE ${tableName}
+       SET publication_status = LOWER(TRIM(COALESCE(publication_status, 'published')))`
+    );
+    await db.exec(
+      `UPDATE ${tableName}
+       SET publication_status = 'unlisted'
+       WHERE publication_status = 'archived'`
+    );
+    await db.exec(
+      `UPDATE ${tableName}
+       SET publication_status = 'published'
+       WHERE publication_status NOT IN (${ALL_PUBLICATION_STATUSES.map((status) => `'${status}'`).join(', ')})`
+    );
+    await db.exec(
+      `UPDATE ${tableName}
+       SET published_at = NULL
+       WHERE published_at IS NOT NULL
+         AND TRIM(COALESCE(published_at, '')) = ''`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_publication_status
+       ON ${tableName}(publication_status)`
+    );
+    await db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${tableName}_published_at
+       ON ${tableName}(published_at)`
+    );
+  }
+}
+
+async function ensureColumnExists(db, tableName, columnName, definition) {
+  try {
+    await db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  } catch (err) {
+    if (!/duplicate column name|no such table/i.test(err.message)) {
+      throw err;
+    }
+  }
+}
+
+async function ensurePreviewTokenColumns(db) {
+  const previewTables = ['music', 'videos', 'gallery', 'projects', 'releases', 'curated_collections'];
+
+  for (const tableName of previewTables) {
+    await ensureColumnExists(db, tableName, 'preview_token', 'TEXT');
+
+    const tableExists = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      tableName
+    );
+    if (!tableExists) {
+      continue;
+    }
+
+    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_preview_token ON ${tableName}(preview_token)`);
+  }
+}
+
+async function ensurePhaseTwoColumns(db) {
+  await ensureColumnExists(db, 'projects', 'tools_used', 'TEXT');
+  await ensureColumnExists(db, 'projects', 'stack_used', 'TEXT');
+  await ensureColumnExists(db, 'projects', 'started_on', 'DATE');
+  await ensureColumnExists(db, 'projects', 'completed_on', 'DATE');
+  await ensureColumnExists(db, 'projects', 'accent_colour', 'TEXT');
+  await ensureColumnExists(db, 'projects', 'visual_style', "TEXT NOT NULL DEFAULT 'default'");
+
+  await ensureColumnExists(db, 'releases', 'accent_colour', 'TEXT');
+  await ensureColumnExists(db, 'releases', 'visual_style', "TEXT NOT NULL DEFAULT 'default'");
+
+  await ensureColumnExists(db, 'project_updates', 'title', 'TEXT');
+  await ensureColumnExists(db, 'project_updates', 'update_kind', "TEXT NOT NULL DEFAULT 'note'");
+  await ensureColumnExists(db, 'project_updates', 'is_pinned', 'INTEGER NOT NULL DEFAULT 0');
+  await ensureColumnExists(db, 'project_updates', 'image_filename', 'TEXT');
+  await ensureColumnExists(db, 'project_updates', 'linked_video_id', 'INTEGER');
+}
+
+async function ensureProjectStatusColumn(db) {
+  try {
+    await db.exec(`ALTER TABLE projects ADD COLUMN project_status TEXT NOT NULL DEFAULT '${ONGOING_PROJECT_STATUS}'`);
+  } catch (err) {
+    if (!/duplicate column name/i.test(err.message)) {
+      throw err;
+    }
+  }
+
+  const projectColumns = await db.all('PRAGMA table_info(projects)');
+  const hasLegacyStatusColumn = projectColumns.some((column) => column && column.name === 'status');
+
+  if (hasLegacyStatusColumn) {
+    await db.exec(
+      `UPDATE projects
+       SET project_status = CASE
+         WHEN TRIM(COALESCE(project_status, '')) = '' THEN CASE
+           WHEN LOWER(TRIM(COALESCE(status, ''))) IN ('${ONGOING_PROJECT_STATUS}', '${CLOSED_PROJECT_STATUS}')
+             THEN LOWER(TRIM(status))
+           ELSE '${ONGOING_PROJECT_STATUS}'
+         END
+         ELSE LOWER(TRIM(project_status))
+       END`
+    );
+  } else {
+    await db.exec(
+      `UPDATE projects
+       SET project_status = LOWER(TRIM(COALESCE(project_status, '${ONGOING_PROJECT_STATUS}')))`
+    );
+  }
+
+  await db.exec(
+    `UPDATE projects
+     SET project_status = '${ONGOING_PROJECT_STATUS}'
+     WHERE project_status NOT IN ('${ONGOING_PROJECT_STATUS}', '${CLOSED_PROJECT_STATUS}')`
+  );
+  await db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_projects_project_status ON projects(project_status)'
+  );
+}
+
+async function ensureTwoFactorColumns(db) {
+  const adminColumns = [
+    {
+      name: 'two_factor_secret',
+      definition: 'TEXT',
+    },
+    {
+      name: 'two_factor_enabled',
+      definition: 'INTEGER NOT NULL DEFAULT 0',
+    },
+    {
+      name: 'two_factor_recovery_codes',
+      definition: 'TEXT',
+    },
+  ];
+
+  for (const column of adminColumns) {
+    try {
+      await db.exec(`ALTER TABLE admins ADD COLUMN ${column.name} ${column.definition}`);
+    } catch (err) {
+      if (!/duplicate column name/i.test(err.message)) {
+        throw err;
+      }
+    }
+  }
+
+  await db.exec(`
+    UPDATE admins
+    SET two_factor_enabled = CASE
+      WHEN two_factor_secret IS NOT NULL AND TRIM(two_factor_secret) != '' THEN 1
+      ELSE 0
+    END
+    WHERE COALESCE(two_factor_enabled, 0) NOT IN (0, 1)
+       OR (COALESCE(two_factor_enabled, 0) = 1 AND (two_factor_secret IS NULL OR TRIM(two_factor_secret) = ''))
+  `);
+}
+
+async function ensureSortOrderColumns(db) {
+  const contentTables = [
+    {
+      tableName: 'music',
+      backfillOrderBy: `CASE WHEN order_index IS NULL THEN 0 ELSE 1 END,
+        order_index,
+        id`,
+    },
+    {
+      tableName: 'videos',
+      backfillOrderBy: 'created_at DESC, id DESC',
+    },
+    {
+      tableName: 'gallery',
+      backfillOrderBy: 'created_at DESC, id DESC',
+    },
+    {
+      tableName: 'projects',
+      backfillOrderBy: 'created_at DESC, id DESC',
+    },
+    {
+      tableName: 'releases',
+      backfillOrderBy: 'COALESCE(release_date, created_at) DESC, id DESC',
+    },
+    {
+      tableName: 'curated_collections',
+      backfillOrderBy: 'created_at DESC, id DESC',
+    },
+    {
+      tableName: 'homepage_sections',
+      backfillOrderBy: 'created_at ASC, id ASC',
+    },
+  ];
+
+  for (const config of contentTables) {
+    let addedColumn = false;
+
+    try {
+      await db.exec(`ALTER TABLE ${config.tableName} ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`);
+      addedColumn = true;
+    } catch (err) {
+      if (!/duplicate column name/i.test(err.message)) {
+        throw err;
+      }
+    }
+
+    if (addedColumn) {
+      const rows = await db.all(`SELECT id FROM ${config.tableName} ORDER BY ${config.backfillOrderBy}`);
+
+      await db.exec('BEGIN TRANSACTION');
+      try {
+        for (let index = 0; index < rows.length; index += 1) {
+          await db.run(
+            `UPDATE ${config.tableName} SET sort_order = ? WHERE id = ?`,
+            index + 1,
+            rows[index].id
+          );
+        }
+        await db.exec('COMMIT');
+      } catch (txErr) {
+        await db.exec('ROLLBACK');
+        throw txErr;
+      }
+    }
+
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_${config.tableName}_sort_order ON ${config.tableName}(sort_order)`);
+  }
+}
+
+async function ensureContentSlugColumns(db) {
+  const slugTables = [
+    {
+      tableName: 'music',
+      fallbackPrefix: 'track',
+      allowNumericOnly: false,
+      addColumn: true,
+      createUniqueIndex: true,
+    },
+    {
+      tableName: 'music_playlists',
+      fallbackPrefix: 'playlist',
+      allowNumericOnly: false,
+      addColumn: true,
+      createUniqueIndex: true,
+    },
+    {
+      tableName: 'videos',
+      fallbackPrefix: 'video',
+      allowNumericOnly: false,
+      addColumn: true,
+      createUniqueIndex: true,
+    },
+    {
+      tableName: 'gallery',
+      fallbackPrefix: 'image',
+      allowNumericOnly: false,
+      addColumn: true,
+      createUniqueIndex: true,
+    },
+    {
+      tableName: 'projects',
+      fallbackPrefix: 'project',
+      allowNumericOnly: true,
+      addColumn: false,
+      createUniqueIndex: false,
+    },
+    {
+      tableName: 'releases',
+      fallbackPrefix: 'release',
+      allowNumericOnly: false,
+      addColumn: false,
+      createUniqueIndex: false,
+    },
+    {
+      tableName: 'curated_collections',
+      fallbackPrefix: 'collection',
+      allowNumericOnly: false,
+      addColumn: false,
+      createUniqueIndex: false,
+    },
+  ];
+
+  for (const config of slugTables) {
+    if (config.addColumn) {
+      try {
+        await db.exec(`ALTER TABLE ${config.tableName} ADD COLUMN slug TEXT`);
+      } catch (err) {
+        if (!/duplicate column name/i.test(err.message)) {
+          throw err;
+        }
+      }
+    }
+
+    const rows = await db.all(
+      `SELECT id, title, slug
+       FROM ${config.tableName}
+       WHERE slug IS NULL OR TRIM(slug) = ''
+       ORDER BY id ASC`
+    );
+
+    for (const row of rows) {
+      const slug = await generateUniqueSlug(db, {
+        tableName: config.tableName,
+        title: row.title,
+        fallbackPrefix: config.fallbackPrefix,
+        allowNumericOnly: config.allowNumericOnly,
+        ignoreId: row.id,
+        idForFallback: row.id,
+      });
+
+      await db.run(`UPDATE ${config.tableName} SET slug = ? WHERE id = ?`, slug, row.id);
+    }
+
+    if (config.createUniqueIndex) {
+      await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${config.tableName}_slug_unique ON ${config.tableName}(slug)`);
+    }
+  }
+}
+
 (async () => {
   ensureDbDirectoryExists();
   console.log(`Using SQLite database at: ${DB_FILE_PATH}`);
@@ -75,6 +441,15 @@ function getUserFacingErrorMessage(err, statusCode) {
   const schemaPath = path.join(__dirname, 'database', 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await db.exec(schema);
+  await pruneOldAnalyticsEvents(db, process.env.ANALYTICS_RETENTION_DAYS);
+  await ensureTwoFactorColumns(db);
+  await ensurePublicationStatusColumns(db);
+  await ensurePreviewTokenColumns(db);
+  await ensurePhaseTwoColumns(db);
+  await ensureProjectStatusColumn(db);
+  await ensureSortOrderColumns(db);
+  await ensureContentSlugColumns(db);
+  await ensureTagTablesReady(db);
 
   // Safety indexes for existing databases (no DB reset required)
   await db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_music_playlist_items_unique ON music_playlist_items(playlist_id, music_id)').catch(() => {});
@@ -108,24 +483,6 @@ function getUserFacingErrorMessage(err, statusCode) {
     }
   }
 
-  async function ensureArchiveVariants(rows, subdir, fieldName) {
-    const seen = new Set();
-    for (const row of rows) {
-      const filename = row[fieldName];
-      if (!filename || seen.has(filename)) continue;
-      seen.add(filename);
-      try {
-        await ensureArchiveVariant(subdir, filename);
-      } catch (err) {
-        console.error(`Failed to generate archive variant for ${subdir}/${filename}:`, err.message);
-      }
-    }
-  }
-
-  await ensureArchiveVariants(await db.all('SELECT cover_image FROM music WHERE cover_image IS NOT NULL'), 'music', 'cover_image');
-  await ensureArchiveVariants(await db.all('SELECT filename FROM gallery WHERE filename IS NOT NULL'), 'images', 'filename');
-  await ensureArchiveVariants(await db.all('SELECT hero_image FROM projects WHERE hero_image IS NOT NULL'), 'projects', 'hero_image');
-
   // ============================================================================
   // Bootstrap initial admin account if requested
   // ============================================================================
@@ -151,7 +508,9 @@ function getUserFacingErrorMessage(err, statusCode) {
   const sessionSecret = process.env.SESSION_SECRET;
 
   app.locals.db = db;
-  app.locals.getArchiveImageUrl = getArchiveImageUrl;
+  app.locals.formatPublicationStatusLabel = formatPublicationStatusLabel;
+  app.locals.getOriginalImageUrl = getOriginalImageUrl;
+  app.locals.toDateTimeLocalValue = toDateTimeLocalValue;
   app.disable('x-powered-by');
   app.set('trust proxy', trustProxySetting);
 
@@ -202,7 +561,7 @@ function getUserFacingErrorMessage(err, statusCode) {
     session({
       store: sessionStore,
       secret: sessionSecret || crypto.randomBytes(32).toString('hex'),
-      name: process.env.SESSION_COOKIE_NAME || 'nightvault.sid',
+      name: process.env.SESSION_COOKIE_NAME || 'paracausal.sid',
       proxy: !!trustProxySetting,
       resave: false,
       saveUninitialized: false,
@@ -258,6 +617,7 @@ function getUserFacingErrorMessage(err, statusCode) {
   app.use((req, res, next) => {
     res.locals.currentUser = req.session.admin || null;
     res.locals.adminSetupRequired = !!req.adminSetupRequired;
+    res.locals.assetVersion = STYLE_CSS_VERSION;
     res.locals.hidePlayer = false;
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');

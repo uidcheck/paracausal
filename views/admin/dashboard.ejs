@@ -7,6 +7,7 @@
   <p>Gallery: <%= counts.gallery %></p>
   <p>Projects: <%= counts.projects %></p>
   <p>Homepage Links: <%= counts.homepageLinks %></p>
+  <p>Analytics Views: <%= counts.analyticsViews %></p>
 </div>
 <nav class="admin-nav">
   <h3 style="margin-top: 2rem;">Content Management</h3>
@@ -27,6 +28,7 @@
 
   <h3 style="margin-top: 2rem;">Homepage</h3>
   <ul>
+    <li><a href="/admin/homepage">Homepage Settings</a></li>
     <li><a href="/admin/homepage-links">Homepage Links</a></li>
   </ul>
   
@@ -34,6 +36,13 @@
   <ul>
     <li><a href="/admin/change-username">Change Username</a></li>
     <li><a href="/admin/change-password">Change Password</a></li>
+    <li><a href="/admin/two-factor">Two-Factor Authentication</a></li>
+  </ul>
+
+  <h3 style="margin-top: 2rem;">Maintenance</h3>
+  <ul>
+    <li><a href="/admin/analytics">Analytics</a></li>
+    <li><a href="/admin/maintenance">Backup and Restore</a></li>
   </ul>
 </nav>
 <%- include('../partials/footer') %>

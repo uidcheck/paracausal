@@ -1,14 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <% const meta = typeof pageMeta !== 'undefined' && pageMeta ? pageMeta : {}; %>
+  <% const metaTitle = meta.title || 'PARACAUSAL'; %>
+  <% const metaDescription = meta.description || 'PARACAUSAL brings together music, videos, images and projects in one place.'; %>
+  <% const metaImage = meta.image || ''; %>
+  <% const metaType = meta.type || 'website'; %>
+  <% const canonicalUrl = meta.canonicalUrl || ''; %>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NIGHTVAULT</title>
+  <title><%= metaTitle %></title>
+  <meta name="description" content="<%= metaDescription %>">
+  <% if (canonicalUrl) { %><link rel="canonical" href="<%= canonicalUrl %>"><% } %>
+  <meta property="og:site_name" content="PARACAUSAL">
+  <meta property="og:title" content="<%= metaTitle %>">
+  <meta property="og:description" content="<%= metaDescription %>">
+  <meta property="og:type" content="<%= metaType %>">
+  <% if (canonicalUrl) { %><meta property="og:url" content="<%= canonicalUrl %>"><% } %>
+  <% if (metaImage) { %><meta property="og:image" content="<%= metaImage %>"><% } %>
+  <meta name="twitter:card" content="<%= metaImage ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:title" content="<%= metaTitle %>">
+  <meta name="twitter:description" content="<%= metaDescription %>">
+  <% if (metaImage) { %><meta name="twitter:image" content="<%= metaImage %>"><% } %>
   <link rel="preload" as="image" href="/images/site-bg.webp" type="image/webp" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=<%= encodeURIComponent(assetVersion || '1') %>">
   <script src="https://unpkg.com/wavesurfer.js"></script>
   <meta name="csrf-token" content="<%= csrfToken || '' %>">
   <link rel="icon" type="image/png" href="/favicon.png">
@@ -16,7 +34,7 @@
 </head>
 <body>
   <header>
-    <h1 class="site-title"><a href="/">NIGHTVAULT</a></h1>
+    <h1 class="site-title"><a href="/">PARACAUSAL</a></h1>
     <p class="tagline">Built on Feeling, Not Formula</p>
     <nav>
       <ul class="nav-list">

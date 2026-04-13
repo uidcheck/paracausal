@@ -1,6 +1,6 @@
   </main>
   <footer>
-    <p>&copy; <%= new Date().getFullYear() %> NIGHTVAULT</p>
+    <p>&copy; <%= new Date().getFullYear() %> PARACAUSAL</p>
   </footer>
   <% if (!(typeof hidePlayer !== 'undefined' && hidePlayer)) { %>
   <div id="audio-player" class="audio-player">
@@ -15,6 +15,10 @@
         <div id="waveform"></div>
       </div>
       <div class="right-group">
+        <button id="queue-toggle" class="player-mode-button player-queue-toggle" type="button" aria-expanded="false" aria-controls="audio-player-queue">
+          Queue
+          <span id="queue-count" class="player-queue-toggle__count">0</span>
+        </button>
         <div class="player-mode-controls" aria-label="Playback modes">
           <button id="shuffle-toggle" class="player-mode-button" type="button" aria-pressed="false">Shuffle</button>
           <button id="repeat-toggle" class="player-mode-button" type="button" data-repeat-mode="off" aria-pressed="false">Repeat Off</button>
@@ -26,6 +30,22 @@
           Autoplay
         </label>
       </div>
+    </div>
+    <div class="audio-player-queue-shell">
+      <section id="audio-player-queue" class="audio-player-queue" hidden aria-label="Queue panel">
+        <div class="audio-player-queue__header">
+          <div>
+            <h3>Up Next</h3>
+            <p>
+              <span id="queue-source-label">Manual queue</span>
+              <span class="audio-player-queue__separator">/</span>
+              <span id="queue-current-track">No active track</span>
+            </p>
+          </div>
+        </div>
+        <p id="queue-empty" class="audio-player-queue__empty">The queue is empty.</p>
+        <ol id="queue-list" class="audio-player-queue__list" hidden></ol>
+      </section>
     </div>
   </div>
   <% } %>

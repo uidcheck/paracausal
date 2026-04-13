@@ -1,0 +1,47 @@
+<%- include('partials/header') %>
+<%- include('partials/messages') %>
+<div class="gallery-detail-view">
+  <a href="/gallery" class="back-link">&larr; Back to gallery</a>
+  <% const imageUrl = getOriginalImageUrl('images', image.filename); %>
+
+  <h2><%= image.title || 'Gallery Item' %></h2>
+  <%- include('partials/tag-pills', { tags: image.tags, className: 'tag-pill-row-inline', tagContext: 'gallery' }) %>
+
+  <% if (image.filename && imageUrl) { %>
+    <div class="gallery-detail-media">
+      <a href="<%= imageUrl %>" target="_blank" rel="noopener noreferrer" class="gallery-detail-media__link">
+        <img src="<%= imageUrl %>" alt="<%= image.title || image.filename %>" loading="eager" decoding="async" class="gallery-detail-media__image">
+      </a>
+    </div>
+  <% } %>
+
+  <% if (image.caption) { %>
+    <section style="margin: 1.5rem 0;">
+      <h3>Caption</h3>
+      <p><%= image.caption %></p>
+    </section>
+  <% } %>
+
+  <% if (image.category) { %>
+    <section style="margin: 1.5rem 0; padding: 1rem; background: #111; border: 1px solid #333; border-radius: 4px;">
+      <strong>Category:</strong> <span style="color: #0ff;"><%= image.category %></span>
+    </section>
+  <% } %>
+
+  <% if (relatedProjects && relatedProjects.length) { %>
+    <section style="margin: 1.5rem 0;">
+      <% if (relatedProjects && relatedProjects.length) { %>
+        <h3>Linked projects</h3>
+        <ul>
+          <% relatedProjects.forEach((project) => { %>
+            <li>
+              <a href="/projects/<%= project.slug %>"><%= project.title %></a>
+              <% if (project.projectStatusLabel) { %><span> / <%= project.projectStatusLabel %></span><% } %>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

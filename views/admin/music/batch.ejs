@@ -5,7 +5,7 @@
 <form action="/admin/music/batch" method="post" enctype="multipart/form-data" class="admin-form" id="batch-upload-form" data-no-soft-submit="true" data-upload-progress-form data-upload-processing-label="Upload complete. Processing files..." data-upload-processing-label-wav="Upload complete. Converting WAV files to MP3 and finalising batch..." data-upload-files-label-singular="track" data-upload-files-label-plural="tracks">
   <%- include('../../partials/csrf-field') %>
   <label>Audio Files: <input type="file" name="files" accept="audio/*" multiple required></label>
-  <p style="font-size:0.8rem;color:#888;">Select multiple audio files to upload at once. Metadata will be auto-extracted where available.</p>
+  <p style="font-size:0.8rem;color:#888;">Embedded metadata is loaded automatically.</p>
   <section class="upload-feedback" data-upload-feedback hidden aria-live="polite" aria-atomic="true">
     <div class="upload-feedback-header">
       <h3 data-upload-feedback-title>Preparing batch upload</h3>
@@ -29,9 +29,16 @@
   <label>Shared Artist: <input type="text" name="default_artist" placeholder="e.g. Artist Name"></label>
   <label>Shared Album: <input type="text" name="default_album"></label>
   <label>Shared Year: <input type="number" name="default_year"></label>
-  <label>Shared Description: <textarea name="shared_description" placeholder="Album description (shown at playlist level)"></textarea></label>
+  <label>Shared Description: <textarea name="shared_description" placeholder="Album description"></textarea></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= option.value === 'published' ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
   <label>Shared Cover Image: <input type="file" name="shared_cover" accept="image/*"></label>
-  <p style="font-size:0.8rem;color:#888;">One cover image for the whole batch. If not provided, embedded covers from files will be used.</p>
+  <p style="font-size:0.8rem;color:#888;">Uses embedded covers when available.</p>
 
   <h3>Playlist Assignment</h3>
   <label>Assign to Existing Playlist:

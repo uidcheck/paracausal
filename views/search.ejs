@@ -1,39 +1,58 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
+<%
+  const safeResults = results || {};
+  const musicResults = Array.isArray(safeResults.music) ? safeResults.music : [];
+  const videoResults = Array.isArray(safeResults.videos) ? safeResults.videos : [];
+  const galleryResults = Array.isArray(safeResults.gallery) ? safeResults.gallery : [];
+  const projectResults = Array.isArray(safeResults.projects) ? safeResults.projects : [];
+%>
 <h2>Search Results for "<%= query %>"</h2>
-<% if (results.music && results.music.length) { %>
+<% if (musicResults.length) { %>
   <h3>Music</h3>
   <ul>
-    <% results.music.forEach(track => { %>
-      <li><a href="/music"><%= track.title %> by <%= track.artist %></a></li>
+    <% musicResults.forEach(track => { %>
+      <li>
+        <a href="/music/<%= track.slug %>"><%= track.title %> by <%= track.artist %></a>
+        <%- include('partials/tag-pills', { tags: track.tags, className: 'tag-pill-row-compact', tagContext: 'music' }) %>
+      </li>
     <% }) %>
   </ul>
 <% } %>
-<% if (results.videos && results.videos.length) { %>
+<% if (videoResults.length) { %>
   <h3>Videos</h3>
   <ul>
-    <% results.videos.forEach(video => { %>
-      <li><a href="/videos"><%= video.title %></a></li>
+    <% videoResults.forEach(video => { %>
+      <li>
+        <a href="/videos/<%= video.slug %>"><%= video.title %></a>
+        <%- include('partials/tag-pills', { tags: video.tags, className: 'tag-pill-row-compact', tagContext: 'videos' }) %>
+      </li>
     <% }) %>
   </ul>
 <% } %>
-<% if (results.gallery && results.gallery.length) { %>
+<% if (galleryResults.length) { %>
   <h3>Gallery</h3>
   <ul>
-    <% results.gallery.forEach(img => { %>
-      <li><a href="/gallery"><%= img.title %></a></li>
+    <% galleryResults.forEach(img => { %>
+      <li>
+        <a href="/gallery/<%= img.slug %>"><%= img.title %></a>
+        <%- include('partials/tag-pills', { tags: img.tags, className: 'tag-pill-row-compact', tagContext: 'gallery' }) %>
+      </li>
     <% }) %>
   </ul>
 <% } %>
-<% if (results.projects && results.projects.length) { %>
+<% if (projectResults.length) { %>
   <h3>Projects</h3>
   <ul>
-    <% results.projects.forEach(proj => { %>
-      <li><a href="/projects/<%= proj.slug %>"><%= proj.title %></a></li>
+    <% projectResults.forEach(proj => { %>
+      <li>
+        <a href="/projects/<%= proj.slug %>"><%= proj.title %></a>
+        <%- include('partials/tag-pills', { tags: proj.tags, className: 'tag-pill-row-compact', tagContext: 'projects' }) %>
+      </li>
     <% }) %>
   </ul>
 <% } %>
-<% if (!results.music.length && !results.videos.length && !results.gallery.length && !results.projects.length) { %>
+<% if (!musicResults.length && !videoResults.length && !galleryResults.length && !projectResults.length) { %>
   <p>No results found.</p>
 <% } %>
 <%- include('partials/footer') %>

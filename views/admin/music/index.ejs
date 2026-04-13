@@ -2,57 +2,118 @@
 <%- include('../../partials/messages') %>
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Music Management</h2>
-<a href="/admin/music/new" class="btn">Upload New Track</a>
-<a href="/admin/music/batch" class="btn">Batch Upload</a>
-<% if (tracks && tracks.length) { %>
-  <section class="admin-bulk-root" data-bulk-select-root data-bulk-label-singular="song" data-bulk-label-plural="songs">
-    <div class="admin-bulk-toolbar">
-      <div class="admin-bulk-toolbar-actions">
-        <button type="button" class="btn" data-bulk-select-start>Select Songs</button>
-        <button type="button" class="btn" data-bulk-select-stop hidden>Stop Selecting</button>
-      </div>
-      <form id="music-bulk-delete-form" action="/admin/music/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
-        <%- include('../../partials/csrf-field') %>
-        <button type="button" class="btn admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
-        <span class="admin-bulk-selection-count" data-bulk-selection-count>0 songs selected</span>
-      </form>
+<section class="admin-bulk-root music-management-root" data-bulk-select-root data-bulk-label-singular="song" data-bulk-label-plural="songs" data-drag-sort-root data-drag-sort-endpoint="/admin/reorder/music" data-drag-sort-enabled="<%= !publicationStatusFilter && tracks && tracks.length > 1 ? 'true' : 'false' %>">
+  <div class="music-management-toolbar">
+    <div class="music-management-toolbar__quick-actions">
+      <a href="/admin/music/new" class="btn">Upload New Track</a>
+      <a href="/admin/music/batch" class="btn">Batch Upload</a>
     </div>
-    <ul class="admin-list">
+    <div class="music-management-toolbar__controls">
+      <form method="get" class="search-form admin-list-filter music-management-filter">
+        <select name="publication_status" aria-label="Filter by publication status">
+          <option value="">All statuses</option>
+          <% publicationStatusOptions.forEach((option) => { %>
+            <option value="<%= option.value %>" <%= publicationStatusFilter === option.value ? 'selected' : '' %>><%= option.label %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary">Filter</button>
+      </form>
+      <% if (tracks && tracks.length) { %>
+        <div class="admin-bulk-toolbar">
+          <div class="admin-bulk-toolbar-actions">
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary" data-bulk-select-start aria-pressed="false">Select Songs</button>
+          </div>
+          <form id="music-bulk-delete-form" action="/admin/music/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
+            <%- include('../../partials/csrf-field') %>
+            <div class="admin-bulk-playlist-controls" data-bulk-playlist-controls>
+              <label class="admin-bulk-playlist-controls__label" for="music-bulk-playlist-id">Add to playlist</label>
+              <select id="music-bulk-playlist-id" name="playlist_id" class="admin-bulk-playlist-controls__select" data-bulk-playlist-select>
+                <option value="">Choose playlist</option>
+                <% playlists.forEach((playlist) => { %>
+                  <option value="<%= playlist.id %>"><%= playlist.title %></option>
+                <% }) %>
+              </select>
+              <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--secondary" formaction="/admin/music/bulk-playlist-add" data-bulk-playlist-button disabled>Add to Playlist</button>
+            </div>
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--danger admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
+            <span class="admin-bulk-selection-count" data-bulk-selection-count>0 songs selected</span>
+          </form>
+          <p class="drag-sort-feedback" data-drag-sort-feedback hidden></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+<% if (tracks && tracks.length) { %>
+    <ul class="admin-list" data-drag-sort-list>
     <% tracks.forEach(t => { %>
-      <li data-bulk-select-item>
+      <li data-bulk-select-item data-drag-sort-item data-drag-sort-id="<%= t.id %>">
         <label class="bulk-select-checkbox-wrap">
           <input type="checkbox" name="selected_ids" value="<%= t.id %>" data-bulk-select-checkbox form="music-bulk-delete-form">
           <span>Select</span>
         </label>
+        <button type="button" class="drag-sort-handle" data-drag-sort-handle aria-label="Drag to reorder tracks" title="Drag to reorder">
+          <span class="drag-sort-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
         <span class="item-title"><%= t.title %> by <%= t.artist %></span>
+        <span class="status-badge status-badge-<%= t.publication_status || 'published' %>"><%= formatPublicationStatusLabel(t.publication_status) %></span>
+        <%- include('../../partials/tag-pills', { tags: t.tags, className: 'tag-pill-row-admin' }) %>
         <% const count = trackPlaylists[t.id] ? trackPlaylists[t.id].length : 0; %>
         <div class="admin-item-actions">
-          <button type="button" class="toggle-membership">Playlists (<%= count %>)</button>
+          <div class="music-playlist-popover-anchor">
+            <button type="button" class="toggle-membership" data-membership-toggle aria-expanded="false" aria-controls="music-playlists-<%= t.id %>">
+              Playlists
+              <span class="toggle-membership__count"><%= count %></span>
+            </button>
+            <div id="music-playlists-<%= t.id %>" class="membership-panel membership-panel--popover membership-panel--music-compact" data-membership-panel hidden>
+              <form method="post" action="/admin/music/<%= t.id %>/playlists">
+                <%- include('../../partials/csrf-field') %>
+                <div class="membership-panel__header membership-panel__header--music-compact">
+                  <div class="membership-panel__header-main">
+                    <h3 class="membership-panel__title">Playlists</h3>
+                  </div>
+                  <div class="membership-panel__header-actions">
+                    <span class="membership-panel__count" data-membership-selected-count><%= count %> selected</span>
+                    <button type="button" class="membership-panel__close" data-membership-close aria-label="Close playlists panel">Close</button>
+                  </div>
+                </div>
+                <% if (playlists && playlists.length) { %>
+                  <div class="membership-panel__list" role="group" aria-label="Playlist assignments for <%= t.title %>">
+                    <% playlists.forEach(p => { %>
+                      <label class="membership-option">
+                        <input type="checkbox" name="playlists" value="<%= p.id %>" <%= trackPlaylists[t.id] && trackPlaylists[t.id].some(m=>m.id===p.id) ? 'checked' : '' %> >
+                        <span class="membership-option__title"><%= p.title %></span>
+                      </label>
+                    <% }) %>
+                  </div>
+                  <div class="membership-panel__actions">
+                    <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary membership-panel__save">Save</button>
+                  </div>
+                <% } else { %>
+                  <p class="membership-panel__empty">No playlists yet.</p>
+                <% } %>
+              </form>
+            </div>
+          </div>
           <a href="/admin/music/<%= t.id %>/edit">edit</a> |
           <form action="/admin/music/<%= t.id %>?_method=DELETE" method="post" style="display:inline;">
             <%- include('../../partials/csrf-field') %>
             <button type="submit" class="link-button">delete</button>
           </form>
         </div>
-        <div class="membership-panel" style="display:none;">
-          <form method="post" action="/admin/music/<%= t.id %>/playlists">
-            <%- include('../../partials/csrf-field') %>
-            <% if (playlists && playlists.length) { %>
-              <% playlists.forEach(p => { %>
-                <label style="display:block; font-size:0.85rem;">
-                  <input type="checkbox" name="playlists" value="<%= p.id %>" <%= trackPlaylists[t.id] && trackPlaylists[t.id].some(m=>m.id===p.id) ? 'checked' : '' %> > <%= p.title %>
-                </label>
-              <% }) %>
-            <% } %>
-            <button type="submit" class="btn">Save</button>
-          </form>
-        </div>
       </li>
     <% }) %>
     </ul>
     <%- include('../../partials/admin-bulk-confirm-modal') %>
-  </section>
 <% } else { %>
   <p>No tracks yet.</p>
 <% } %>
+</section>
 <%- include('../../partials/footer') %>

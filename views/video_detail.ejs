@@ -1,34 +1,46 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
-<div style="max-width: 900px; margin: 0 auto;">
-  <a href="/videos" style="color: #0ff; text-decoration: none;">← Back to videos</a>
-  
+<div class="video-detail-page">
+  <a href="/videos" class="back-link">&larr; Back to videos</a>
+
   <h2><%= video.title %></h2>
-  
+  <%- include('partials/tag-pills', { tags: video.tags, className: 'tag-pill-row-inline', tagContext: 'videos' }) %>
+
   <% if (video.filename) { %>
-    <div class="video-detail-player">
-      <video id="detail-video" width="100%" height="100%" controls>
-        <source src="/uploads/videos/<%= video.filename %>?t=<%= Date.now() %>" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
+    <div class="video-detail-player-shell" data-video-player tabindex="0">
+      <div class="video-detail-player">
+        <div class="video-detail-player__stage">
+          <video
+            id="video-detail"
+            class="video-detail-player__media"
+            controls
+            playsinline
+            preload="metadata"
+            controlslist="nodownload noplaybackrate"
+            disablepictureinpicture>
+          <source src="/uploads/videos/<%= video.filename %>?t=<%= Date.now() %>" type="video/mp4">
+          Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+      <div class="video-controls video-controls--detail" data-video-id="detail">
+        <button type="button" class="play-pause" aria-label="Play video">Play</button>
+        <input type="range" class="seek" min="0" max="1000" step="1" value="0" aria-label="Seek video">
+        <span class="current-time">0:00</span>
+        <span class="video-controls__time-separator">/</span>
+        <span class="duration">0:00</span>
+        <button type="button" class="mute-toggle" aria-label="Mute video">Mute</button>
+        <input type="range" class="volume" min="0" max="1" step="0.05" value="1" aria-label="Video volume">
+        <button type="button" class="fullscreen" aria-label="Toggle fullscreen">Fullscreen</button>
+      </div>
     </div>
   <% } %>
-  
+
   <% if (video.description) { %>
-    <section style="margin: 1.5rem 0;">
+    <section class="video-detail-page__description">
       <h3>Description</h3>
       <p><%= video.description %></p>
     </section>
   <% } %>
-  
-  <% if (video.category) { %>
-    <section style="margin: 1.5rem 0; padding: 1rem; background: #111; border: 1px solid #333; border-radius: 4px;">
-      <strong>Category:</strong> <span style="color: #0ff;"><%= video.category %></span>
-    </section>
-  <% } %>
-  
-  <section style="margin: 2rem 0; text-align: center;">
-    <a href="/videos" class="search-form" style="background: #0ff; color: #000; padding: 0.6rem 1rem; text-decoration: none; border: none; cursor: pointer; display: inline-block;">Back to videos</a>
-  </section>
 </div>
 <%- include('partials/footer') %>

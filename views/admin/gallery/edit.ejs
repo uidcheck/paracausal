@@ -2,22 +2,43 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/gallery" class="back-link">&larr; Back to gallery management</a>
 <h2>Edit Image</h2>
-<form action="/admin/gallery/<%= img.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form">
+<%- include('../../partials/admin-copy-link-actions', { publicationStatus: img.publication_status, publicUrl, previewUrl }) %>
+<form action="/admin/gallery/<%= img.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form" data-image-title-autofill>
   <%- include('../../partials/csrf-field') %>
-  <label>Title: <input type="text" name="title" value="<%= img.title %>"></label>
+  <label>Title: <input type="text" name="title" value="<%= img.title %>" data-image-title-field></label>
+  <label>Slug: <input type="text" name="slug" value="<%= img.slug || '' %>" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only. Numeric-only slugs are not allowed.</p>
   <label>Caption:<textarea name="caption"><%= img.caption %></textarea></label>
+  <label>Tags: <input type="text" name="tags" value="<%= img.tagInput || '' %>" placeholder="portrait, monochrome, behind the scenes"></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (img.publication_status || 'published') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Scheduled Publish Time: <input type="datetime-local" name="published_at" value="<%= toDateTimeLocalValue(img.published_at) %>"></label>
   <label>Category: <input type="text" name="category" value="<%= img.category %>"></label>
-  <label>Image File: <input type="file" name="file" accept="image/*"></label>
+  <label>Image File: <input type="file" name="file" accept="image/*" data-image-title-source></label>
   <% if (collections && collections.length) { %>
     <label>Collections:
-      <select name="collections" multiple size="4">
-        <% collections.forEach(c => { %>
-          <option value="<%= c.id %>" <%= collectionIds && collectionIds.includes(c.id) ? 'selected' : '' %>><%= c.title %></option>
+      <select name="collections" multiple size="5">
+        <% collections.forEach((collection) => { %>
+          <option value="<%= collection.id %>" <%= collectionIds && collectionIds.includes(collection.id) ? 'selected' : '' %>><%= collection.title %></option>
         <% }) %>
       </select>
     </label>
-    <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
+    <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to update collection membership.</p>
   <% } %>
+  <h3>Connected Content</h3>
+  <label>Related Projects:
+    <select name="related_project_ids" multiple size="5">
+      <% relationshipOptions.projects.forEach((project) => { %>
+        <option value="<%= project.id %>" <%= relationshipSelections.relatedProjectIds.includes(project.id) ? 'selected' : '' %>><%= project.title %> (<%= project.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
   <button type="submit">Update</button>
 </form>
 <%- include('../../partials/footer') %>

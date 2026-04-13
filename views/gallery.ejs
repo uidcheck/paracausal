@@ -15,10 +15,10 @@
       <a href="/gallery" class="playlist-link<%= !selectedCollection ? ' active' : '' %>">All Images</a>
     </div>
     <% if (collections && collections.length) { %>
-      <% collections.forEach(col => { %>
+      <% collections.forEach((collection) => { %>
         <div class="playlist-item">
-          <a href="/gallery?collection=<%= col.id %>" class="playlist-link<%= selectedCollection == col.id ? ' active' : '' %>">
-            <%= col.title %> (<%= col.count %>)
+          <a href="/gallery?collection=<%= collection.id %>" class="playlist-link<%= selectedCollection == collection.id ? ' active' : '' %>">
+            <%= collection.title %> (<%= collection.count || 0 %>)
           </a>
         </div>
       <% }) %>
@@ -28,15 +28,32 @@
   </aside>
 
   <div class="gallery-main">
+    <% if (selectedCollectionInfo) { %>
+      <section class="collection-info">
+        <h3><%= selectedCollectionInfo.title %></h3>
+        <% if (selectedCollectionInfo.description) { %>
+          <p><%= selectedCollectionInfo.description %></p>
+        <% } %>
+        <span><%= selectedCollectionInfo.count || 0 %> images</span>
+      </section>
+    <% } %>
+
     <% if (images && images.length) { %>
       <div class="gallery-grid">
         <% images.forEach((img, index) => { %>
+          <% const imageUrl = getOriginalImageUrl('images', img.filename); %>
+          <% const captionText = typeof img.caption === 'string' ? img.caption.trim() : ''; %>
           <div class="gallery-item">
-            <a href="/uploads/images/<%= img.filename %>">
-              <img src="<%= getArchiveImageUrl('images', img.filename) %>" alt="<%= img.title %>" loading="<%= index < 6 ? 'eager' : 'lazy' %>" decoding="async" width="480" height="480">
+            <a href="/gallery/<%= img.slug %>" class="gallery-item__image-link">
+              <% if (imageUrl) { %>
+                <img src="<%= imageUrl %>" alt="<%= img.title %>" loading="<%= index < 6 ? 'eager' : 'lazy' %>" decoding="async" width="480" height="480">
+              <% } %>
             </a>
-            <h3><%= img.title %></h3>
-            <p><%= img.caption %></p>
+            <h3><a href="/gallery/<%= img.slug %>" class="gallery-item__title-link"><%= img.title %></a></h3>
+            <% if (captionText) { %>
+              <p><%= captionText %></p>
+            <% } %>
+            <%- include('partials/tag-pills', { tags: img.tags, className: 'tag-pill-row-compact', tagContext: 'gallery' }) %>
           </div>
         <% }) %>
       </div>

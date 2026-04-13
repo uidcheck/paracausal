@@ -5,10 +5,13 @@
 
 <form action="/admin/collections/projects/<%= collection.id %>?_method=PUT" method="post" class="admin-form">
   <%- include('../../partials/csrf-field') %>
-  <label>Title: <input type="text" name="title" value="<%= collection.title %>" required></label>
-  <label>Description: <textarea name="description"><%= collection.description || '' %></textarea></label>
+  <label>Title
+    <input type="text" name="title" value="<%= collection.title %>" required>
+  </label>
+  <label>Description
+    <textarea name="description" rows="4"><%= collection.description || '' %></textarea>
+  </label>
   <button type="submit">Update Collection</button>
 </form>
 
-<p style="margin-top: 1rem;"><a href="/admin/collections/projects">&larr; Back to Project Collections</a></p>
 <%- include('../../partials/footer') %>

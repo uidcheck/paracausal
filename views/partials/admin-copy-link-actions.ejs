@@ -1,0 +1,24 @@
+<%
+  const normalizedPublicationStatus = String(publicationStatus || 'published').trim().toLowerCase();
+  const prefersPreviewLink = normalizedPublicationStatus === 'draft' || normalizedPublicationStatus === 'scheduled';
+  const primaryUrl = prefersPreviewLink && previewUrl ? previewUrl : publicUrl;
+  const primaryLabel = prefersPreviewLink && previewUrl ? 'Copy preview link' : 'Copy public link';
+  const primaryHeading = prefersPreviewLink && previewUrl ? 'Preview link' : 'Public link';
+%>
+<% if (primaryUrl) { %>
+  <section
+    class="admin-copy-link-panel"
+    data-admin-copy-link-root
+    data-copy-link-value="<%= primaryUrl %>"
+    data-copy-link-default-label="<%= primaryLabel %>"
+    data-copy-link-copied-label="Copied">
+    <div class="admin-copy-link-panel__content">
+      <p class="admin-copy-link-panel__eyebrow"><%= primaryHeading %></p>
+      <a href="<%= primaryUrl %>" class="admin-copy-link-panel__url" target="_blank" rel="noopener"><%= primaryUrl %></a>
+    </div>
+    <div class="admin-copy-link-panel__actions">
+      <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary" data-admin-copy-link-button><%= primaryLabel %></button>
+      <span class="admin-copy-link-panel__status" data-admin-copy-link-status hidden aria-live="polite"></span>
+    </div>
+  </section>
+<% } %>

@@ -1,0 +1,144 @@
+<%- include('../partials/header') %>
+<%- include('../partials/messages') %>
+<a href="/admin" class="back-link">&larr; Back to dashboard</a>
+<h2>Analytics</h2>
+
+<div class="admin-analytics-controls">
+  <form method="post" action="/admin/analytics/reset" class="admin-analytics-controls__form" data-no-soft-submit="true" data-analytics-reset-form>
+    <%- include('../partials/csrf-field') %>
+    <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary admin-analytics-controls__button" data-analytics-reset-open>Reset Analytics</button>
+  </form>
+</div>
+
+<div class="admin-confirm-modal" data-analytics-reset-modal hidden aria-hidden="true">
+  <div class="admin-confirm-modal__backdrop" data-analytics-reset-close></div>
+  <div
+    class="admin-confirm-modal__dialog admin-confirm-modal__dialog--analytics-reset"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="analytics-reset-title"
+    aria-describedby="analytics-reset-message"
+  >
+    <p class="admin-confirm-modal__eyebrow">Confirm reset</p>
+    <h3 class="admin-confirm-modal__title" id="analytics-reset-title">Reset analytics?</h3>
+    <p class="admin-confirm-modal__message" id="analytics-reset-message">This will permanently clear tracked analytics data.</p>
+    <div class="admin-confirm-modal__actions admin-confirm-modal__actions--analytics-reset">
+      <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary admin-confirm-modal__button" data-analytics-reset-cancel>Cancel</button>
+      <button type="button" class="music-management-toolbar__button music-management-toolbar__button--danger admin-confirm-modal__button" data-analytics-reset-confirm>Reset Analytics</button>
+    </div>
+  </div>
+</div>
+
+<div class="admin-analytics-summary-grid">
+  <section class="admin-section-card admin-analytics-summary-card">
+    <h3>Total Views</h3>
+    <p class="admin-analytics-summary-card__value"><%= analytics.totals.totalViews %></p>
+  </section>
+  <section class="admin-section-card admin-analytics-summary-card">
+    <h3>Last 24 Hours</h3>
+    <p class="admin-analytics-summary-card__value"><%= analytics.totals.viewsLast24Hours %></p>
+  </section>
+  <section class="admin-section-card admin-analytics-summary-card">
+    <h3>Last 7 Days</h3>
+    <p class="admin-analytics-summary-card__value"><%= analytics.totals.viewsLast7Days %></p>
+  </section>
+</div>
+
+<div class="admin-split-layout">
+  <section class="admin-section-card">
+    <h3>Top Pages</h3>
+    <% if (analytics.topPages.length) { %>
+      <div class="admin-analytics-list">
+        <% analytics.topPages.forEach((page) => { %>
+          <div class="admin-analytics-list__item">
+            <div>
+              <strong><%= page.label %></strong>
+              <p class="admin-section-note"><%= page.path %></p>
+            </div>
+            <span class="admin-analytics-list__value"><%= page.views %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p>No public page views recorded yet.</p>
+    <% } %>
+  </section>
+
+  <section class="admin-section-card">
+    <h3>Recent Daily Views</h3>
+    <table class="admin-analytics-table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Views</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% analytics.recentDailyViews.forEach((row) => { %>
+          <tr>
+            <td><%= row.day %></td>
+            <td><%= row.views %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<div class="admin-split-layout">
+  <section class="admin-section-card">
+    <h3>Top Projects</h3>
+    <% if (analytics.topProjects.length) { %>
+      <div class="admin-analytics-list">
+        <% analytics.topProjects.forEach((item) => { %>
+          <div class="admin-analytics-list__item">
+            <div>
+              <strong><%= item.label %></strong>
+              <p class="admin-section-note"><%= item.path %></p>
+            </div>
+            <span class="admin-analytics-list__value"><%= item.views %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p>No project detail views recorded yet.</p>
+    <% } %>
+  </section>
+
+  <section class="admin-section-card">
+    <h3>Top Videos</h3>
+    <% if (analytics.topVideos.length) { %>
+      <div class="admin-analytics-list">
+        <% analytics.topVideos.forEach((item) => { %>
+          <div class="admin-analytics-list__item">
+            <div>
+              <strong><%= item.label %></strong>
+              <p class="admin-section-note"><%= item.path %></p>
+            </div>
+            <span class="admin-analytics-list__value"><%= item.views %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p>No video detail views recorded yet.</p>
+    <% } %>
+  </section>
+</div>
+
+<section class="admin-section-card">
+  <h3>Top Referrers</h3>
+  <% if (analytics.topReferrers.length) { %>
+    <div class="admin-analytics-list">
+      <% analytics.topReferrers.forEach((item) => { %>
+        <div class="admin-analytics-list__item">
+          <strong><%= item.label %></strong>
+          <span class="admin-analytics-list__value"><%= item.views %></span>
+        </div>
+      <% }) %>
+    </div>
+  <% } else { %>
+    <p>No referrers recorded yet.</p>
+  <% } %>
+</section>
+
+<%- include('../partials/footer') %>

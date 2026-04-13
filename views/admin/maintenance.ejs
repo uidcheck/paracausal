@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<%- include('../partials/messages') %>
+<a href="/admin" class="back-link">&larr; Back to dashboard</a>
+<h2>Maintenance</h2>
+
+<section class="card" style="text-align:left; margin-bottom:1rem;">
+  <h3>Create Backup</h3>
+  <p style="margin-top:0.6rem;">Export a ZIP backup containing the active SQLite database, uploaded files and a small manifest.</p>
+  <p style="margin-top:0.6rem;"><strong>Database path:</strong> <%= dbPath %></p>
+  <p style="margin-top:0.4rem;"><strong>Uploads path:</strong> <%= uploadsPath %></p>
+  <form action="/admin/maintenance/backup" method="post" class="admin-form" data-no-soft-submit="true" style="margin-top:1rem;">
+    <%- include('../partials/csrf-field') %>
+    <p style="font-size:0.9rem; color:#ccc; margin-bottom:0.8rem;">Downloaded immediately. Keep it private.</p>
+    <button type="submit">Create Backup</button>
+  </form>
+</section>
+
+<section class="card" style="text-align:left;">
+  <h3>Restore</h3>
+  <p style="margin-top:0.6rem;">Restore uses the CLI.</p>
+  <p style="margin-top:0.6rem; color:#f1d28a;">Stop PARACAUSAL before restoring. The restore command overwrites the current database and uploads directory.</p>
+  <pre style="margin-top:0.8rem; white-space:pre-wrap;">node restore-backup.js path/to/paracausal-backup-YYYYMMDD-HHMMSS.zip --yes</pre>
+</section>
+<%- include('../partials/footer') %>

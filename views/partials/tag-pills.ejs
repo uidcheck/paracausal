@@ -1,0 +1,9 @@
+<% if (tags && tags.length) { %>
+  <% const safeTagContext = typeof tagContext !== 'undefined' ? tagContext : null; %>
+  <div class="tag-pill-row<%= className ? ' ' + className : '' %>">
+    <% tags.forEach((tag) => { %>
+      <% const tagHref = safeTagContext ? `${tag.urlPath}?from=${encodeURIComponent(safeTagContext)}` : tag.urlPath; %>
+      <a href="<%= tagHref %>" class="tag-pill"><%= tag.name %></a>
+    <% }) %>
+  </div>
+<% } %>

@@ -29,5 +29,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/uidcheck/nightvault:latest
-            ghcr.io/uidcheck/nightvault:${{ github.sha }}
+            ghcr.io/uidcheck/paracausal:latest
+            ghcr.io/uidcheck/paracausal:${{ github.sha }}

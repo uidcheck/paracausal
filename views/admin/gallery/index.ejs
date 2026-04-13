@@ -2,56 +2,89 @@
 <%- include('../../partials/messages') %>
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Gallery Management</h2>
-<a href="/admin/gallery/new" class="btn">Upload Image</a>
-<% if (images && images.length) { %>
-  <section class="admin-bulk-root" data-bulk-select-root data-bulk-label-singular="image" data-bulk-label-plural="images">
-    <div class="admin-bulk-toolbar">
-      <div class="admin-bulk-toolbar-actions">
-        <button type="button" class="btn" data-bulk-select-start>Select Images</button>
-        <button type="button" class="btn" data-bulk-select-stop hidden>Stop Selecting</button>
-      </div>
-      <form id="gallery-bulk-delete-form" action="/admin/gallery/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
-        <%- include('../../partials/csrf-field') %>
-        <button type="button" class="btn admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
-        <span class="admin-bulk-selection-count" data-bulk-selection-count>0 images selected</span>
-      </form>
+<section class="admin-bulk-root music-management-root" data-bulk-select-root data-bulk-label-singular="image" data-bulk-label-plural="images" data-drag-sort-root data-drag-sort-endpoint="/admin/reorder/gallery" data-drag-sort-enabled="<%= !publicationStatusFilter && images && images.length > 1 ? 'true' : 'false' %>">
+  <div class="music-management-toolbar">
+    <div class="music-management-toolbar__quick-actions">
+      <a href="/admin/gallery/new" class="btn">Upload Image</a>
+      <a href="/admin/collections/gallery" class="btn">Manage Collections</a>
     </div>
-    <ul class="admin-list">
+    <div class="music-management-toolbar__controls">
+      <form method="get" class="search-form admin-list-filter music-management-filter">
+        <select name="publication_status" aria-label="Filter by publication status">
+          <option value="">All statuses</option>
+          <% publicationStatusOptions.forEach((option) => { %>
+            <option value="<%= option.value %>" <%= publicationStatusFilter === option.value ? 'selected' : '' %>><%= option.label %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary">Filter</button>
+      </form>
+      <% if (images && images.length) { %>
+        <div class="admin-bulk-toolbar">
+          <div class="admin-bulk-toolbar-actions">
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary" data-bulk-select-start aria-pressed="false">Select Images</button>
+          </div>
+          <form id="gallery-bulk-delete-form" action="/admin/gallery/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
+            <%- include('../../partials/csrf-field') %>
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--danger admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
+            <span class="admin-bulk-selection-count" data-bulk-selection-count>0 images selected</span>
+          </form>
+          <p class="drag-sort-feedback" data-drag-sort-feedback hidden></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+<% if (images && images.length) { %>
+    <ul class="admin-list" data-drag-sort-list>
     <% images.forEach(img => { %>
-      <li data-bulk-select-item>
+      <li data-bulk-select-item data-drag-sort-item data-drag-sort-id="<%= img.id %>">
         <label class="bulk-select-checkbox-wrap">
           <input type="checkbox" name="selected_ids" value="<%= img.id %>" data-bulk-select-checkbox form="gallery-bulk-delete-form">
           <span>Select</span>
         </label>
+        <button type="button" class="drag-sort-handle" data-drag-sort-handle aria-label="Drag to reorder images" title="Drag to reorder">
+          <span class="drag-sort-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
         <span class="item-title"><%= img.title || img.filename %></span>
+        <span class="status-badge status-badge-<%= img.publication_status || 'published' %>"><%= formatPublicationStatusLabel(img.publication_status) %></span>
+        <%- include('../../partials/tag-pills', { tags: img.tags, className: 'tag-pill-row-admin' }) %>
         <% const count = imageCollections[img.id] ? imageCollections[img.id].length : 0; %>
         <div class="admin-item-actions">
-          <button type="button" class="toggle-membership">Collections (<%= count %>)</button>
+          <% if (collections && collections.length) { %>
+            <button type="button" class="toggle-membership" aria-expanded="false">Collections <span class="toggle-membership__count"><%= count %></span></button>
+          <% } %>
           <a href="/admin/gallery/<%= img.id %>/edit">edit</a> |
           <form action="/admin/gallery/<%= img.id %>?_method=DELETE" method="post" style="display:inline;">
             <%- include('../../partials/csrf-field') %>
             <button type="submit" class="link-button">delete</button>
           </form>
         </div>
-        <div class="membership-panel" style="display:none;">
-          <form method="post" action="/admin/gallery/<%= img.id %>/collections">
-            <%- include('../../partials/csrf-field') %>
-            <% if (collections && collections.length) { %>
-              <% collections.forEach(c => { %>
-                <label style="display:block; font-size:0.85rem;">
-                  <input type="checkbox" name="collections" value="<%= c.id %>" <%= imageCollections[img.id] && imageCollections[img.id].some(m=>m.id===c.id) ? 'checked' : '' %> > <%= c.title %>
+        <% if (collections && collections.length) { %>
+          <div class="membership-panel" hidden>
+            <form method="post" action="/admin/gallery/<%= img.id %>/collections">
+              <%- include('../../partials/csrf-field') %>
+              <% collections.forEach((collection) => { %>
+                <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem;">
+                  <input type="checkbox" name="collections" value="<%= collection.id %>" <%= imageCollections[img.id] && imageCollections[img.id].some((member) => member.id === collection.id) ? 'checked' : '' %>> <%= collection.title %>
                 </label>
               <% }) %>
-            <% } %>
-            <button type="submit" class="btn">Save</button>
-          </form>
-        </div>
+              <button type="submit" class="btn" style="margin-top:0.5rem;">Save</button>
+            </form>
+          </div>
+        <% } %>
       </li>
     <% }) %>
     </ul>
     <%- include('../../partials/admin-bulk-confirm-modal') %>
-  </section>
 <% } else { %>
   <p>No images yet.</p>
 <% } %>
+</section>
 <%- include('../../partials/footer') %>

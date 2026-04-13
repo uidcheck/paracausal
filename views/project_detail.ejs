@@ -2,11 +2,28 @@
 <%- include('partials/messages') %>
 <a href="/projects" class="back-link">&larr; Back to projects</a>
 <div class="project-detail">
-  <% if (project.hero_image) { %>
-    <img src="/uploads/projects/<%= project.hero_image %>?t=<%= Date.now() %>" alt="hero" class="hero">
+  <% if (previewMode) { %>
+    <p class="admin-section-note">Preview mode</p>
+  <% } %>
+  <% const heroImageUrl = project.hero_image ? getOriginalImageUrl('projects', project.hero_image) : ''; %>
+  <% const currentUpdatesSort = updatesSort === 'oldest' ? 'oldest' : 'newest'; %>
+  <% if (project.hero_image && heroImageUrl) { %>
+    <a href="<%= heroImageUrl %>" target="_blank" rel="noopener noreferrer" class="project-detail__hero-link">
+      <img src="<%= heroImageUrl %>" alt="<%= project.title %> hero" class="hero">
+    </a>
   <% } %>
   <h2><%= project.title %></h2>
   <% if (project.summary) { %><p class="summary"><%= project.summary %></p><% } %>
+  <% if (project.projectStatusLabel) { %><p class="status">Status: <%= project.projectStatusLabel %></p><% } %>
+  <% if (project.started_on || project.completed_on) { %>
+    <section class="project-documents" style="margin: 1.5rem 0;">
+      <h3>Project Metadata</h3>
+      <% if (project.started_on || project.completed_on) { %>
+        <p><strong>Timeline:</strong> <%= [project.started_on || '', project.completed_on || 'present'].filter(Boolean).join(' to ') %></p>
+      <% } %>
+    </section>
+  <% } %>
+  <%- include('partials/tag-pills', { tags: project.tags, className: 'tag-pill-row-inline', tagContext: 'projects' }) %>
   <p><%= project.description %></p>
   
   <% if (documents && documents.length) { %>
@@ -23,17 +40,69 @@
       </ul>
     </section>
   <% } %>
+
+  <% if ((relatedTracks && relatedTracks.length) || (relatedVideos && relatedVideos.length) || (relatedGallery && relatedGallery.length)) { %>
+    <section style="margin: 2rem 0;">
+      <% if (relatedTracks && relatedTracks.length) { %>
+        <h3>Linked tracks</h3>
+        <ul>
+          <% relatedTracks.forEach((track) => { %>
+            <li><a href="/music/<%= track.slug %>"><%= track.title %></a></li>
+          <% }) %>
+        </ul>
+      <% } %>
+
+      <% if (relatedVideos && relatedVideos.length) { %>
+        <h3>Linked videos</h3>
+        <ul>
+          <% relatedVideos.forEach((video) => { %>
+            <li><a href="/videos/<%= video.slug %>"><%= video.title %></a></li>
+          <% }) %>
+        </ul>
+      <% } %>
+
+      <% if (relatedGallery && relatedGallery.length) { %>
+        <h3>Linked gallery items</h3>
+        <ul>
+          <% relatedGallery.forEach((image) => { %>
+            <li><a href="/gallery/<%= image.slug %>"><%= image.title || 'Untitled image' %></a></li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  <% } %>
   
-  <section class="project-updates" style="margin: 2rem 0;">
-    <h3>Updates</h3>
+  <section id="updates" class="project-updates" style="margin: 2rem 0;">
+    <div class="project-updates__header">
+      <h3>Updates</h3>
+      <% if (updates && updates.length > 1) { %>
+        <form method="get" action="/projects/<%= project.slug %>#updates" class="project-updates__sort-form" data-project-updates-sort-form>
+          <% if (previewToken) { %>
+            <input type="hidden" name="preview" value="<%= previewToken %>">
+          <% } %>
+          <label for="project-updates-sort" class="project-updates__sort-label">Order</label>
+          <select id="project-updates-sort" name="updates" class="project-updates__sort-select">
+            <option value="newest" <%= currentUpdatesSort === 'newest' ? 'selected' : '' %>>Newest first</option>
+            <option value="oldest" <%= currentUpdatesSort === 'oldest' ? 'selected' : '' %>>Oldest first</option>
+          </select>
+        </form>
+      <% } %>
+    </div>
     <% if (updates && updates.length) { %>
-      <div class="updates-container">
+      <div class="updates-container" data-project-updates-container data-project-updates-sort="<%= currentUpdatesSort %>">
         <% updates.forEach(u => { %>
-          <div class="update-card">
+          <div class="update-card" data-project-update-card data-update-id="<%= u.id %>" data-update-pinned="<%= u.is_pinned ? 'true' : 'false' %>" data-update-created-at="<%= u.created_at || '' %>">
             <div class="update-header">
               <span class="update-timestamp"><%= new Date(u.created_at).toLocaleDateString() %></span>
+              <% if (u.is_pinned) { %><span class="status-badge">Pinned</span><% } %>
             </div>
+            <% if (u.title) { %><h4><%= u.title %></h4><% } %>
             <div class="update-content"><%= u.content %></div>
+            <% if (u.image_filename) { %>
+              <div style="margin-top:1rem;">
+                <img src="/uploads/projects/<%= u.image_filename %>" alt="Update image" style="max-width:100%; border:1px solid #333;">
+              </div>
+            <% } %>
             <% if (u.attachments && u.attachments.length) { %>
               <div class="update-attachments">
                 <% u.attachments.forEach(att => { %>

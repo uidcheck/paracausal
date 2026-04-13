@@ -12,6 +12,10 @@ module.exports.ensureAdmin = (req, res, next) => {
 };
 
 module.exports.preventLogin = (req, res, next) => {
+  if (req.session && req.session.pendingTwoFactorAuth) {
+    return res.redirect('/login/2fa');
+  }
+
   if (req.adminSetupRequired) {
     return res.redirect('/setup');
   }

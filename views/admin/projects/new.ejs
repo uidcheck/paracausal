@@ -2,23 +2,66 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/projects" class="back-link">&larr; Back to project management</a>
 <h2>Create Project</h2>
-<form action="/admin/projects" method="post" enctype="multipart/form-data" class="admin-form">
+<form action="/admin/projects" method="post" enctype="multipart/form-data" class="admin-form" data-image-title-autofill>
   <%- include('../../partials/csrf-field') %>
-  <label>Title: <input type="text" name="title" required></label>
+  <label>Title: <input type="text" name="title" required data-image-title-field></label>
+  <label>Slug: <input type="text" name="slug" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only.</p>
   <label>Summary:<textarea name="summary"></textarea></label>
   <label>Description:<textarea name="description"></textarea></label>
-  <label>Status: <input type="text" name="status"></label>
-  <label>Tags: <input type="text" name="tags"></label>
-  <label>Hero Image: <input type="file" name="hero_image" accept="image/*"></label>
-  <label>Documents: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>  <% if (collections && collections.length) { %>
+  <label>Lifecycle Status:
+    <select name="project_status">
+      <% projectStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= option.value === 'ongoing' ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Publication Status:
+    <select name="publication_status" data-scheduled-status-toggle>
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= option.value === 'published' ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <div data-scheduled-publish-field aria-hidden="true" hidden>
+    <label>Scheduled Publish Time: <input type="datetime-local" name="published_at" data-scheduled-publish-input></label>
+  </div>
+  <label>Tags: <input type="text" name="tags" placeholder="research, installation, field notes"></label>
+  <label>Hero Image: <input type="file" name="hero_image" accept="image/*" data-image-title-source></label>
+  <label>Documents: <input type="file" name="documents" accept=".pdf,.doc,.docx,.txt" multiple></label>
+  <% if (collections && collections.length) { %>
     <label>Collections:
-      <select name="collections" multiple size="4">
-        <% collections.forEach(c => { %>
-          <option value="<%= c.id %>"><%= c.title %></option>
+      <select name="collections" multiple size="5">
+        <% collections.forEach((collection) => { %>
+          <option value="<%= collection.id %>"><%= collection.title %></option>
         <% }) %>
       </select>
     </label>
-    <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
-  <% } %>  <button type="submit">Create</button>
+    <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to assign this project to one or more collections.</p>
+  <% } %>
+  <h3>Connected Content</h3>
+  <label>Related Tracks:
+    <select name="related_track_ids" multiple size="5">
+      <% relationshipOptions.tracks.forEach((track) => { %>
+        <option value="<%= track.id %>" <%= relationshipSelections.relatedTrackIds.includes(track.id) ? 'selected' : '' %>><%= track.title %> <% if (track.artist) { %>- <%= track.artist %><% } %> (<%= track.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Videos:
+    <select name="related_video_ids" multiple size="5">
+      <% relationshipOptions.videos.forEach((video) => { %>
+        <option value="<%= video.id %>" <%= relationshipSelections.relatedVideoIds.includes(video.id) ? 'selected' : '' %>><%= video.title %> (<%= video.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Gallery:
+    <select name="related_gallery_ids" multiple size="5">
+      <% relationshipOptions.galleryItems.forEach((image) => { %>
+        <option value="<%= image.id %>" <%= relationshipSelections.relatedGalleryIds.includes(image.id) ? 'selected' : '' %>><%= image.title %> (<%= image.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
+  <button type="submit">Create</button>
 </form>
 <%- include('../../partials/footer') %>

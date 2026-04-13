@@ -1,0 +1,101 @@
+<%- include('../partials/header') %>
+<%- include('../partials/messages') %>
+<a href="/admin" class="back-link">&larr; Back to dashboard</a>
+<h2>Homepage Settings</h2>
+
+<div class="admin-split-layout">
+  <section class="admin-section-card">
+    <h3>Intro and Featured Content</h3>
+    <form action="/admin/homepage" method="post" class="admin-form">
+      <%- include('../partials/csrf-field') %>
+      <label>Homepage Heading
+        <input type="text" name="heading_override" value="<%= settings.headingOverride || '' %>" placeholder="Selected Work">
+      </label>
+      <label>Tagline
+        <input type="text" name="tagline" value="<%= settings.tagline || '' %>" placeholder="Optional subtitle">
+      </label>
+      <label>Intro Text
+        <textarea name="intro_text" rows="5"><%= settings.introText %></textarea>
+      </label>
+      <p class="admin-section-note">Leave the heading blank to use the default title.</p>
+
+      <label>Featured Project
+        <select name="featured_project_id">
+          <option value="">None</option>
+          <% featureOptions.projects.forEach((project) => { %>
+            <option value="<%= project.id %>" <%= settings.featuredProjectId === project.id ? 'selected' : '' %>><%= project.title %> / <%= project.project_status === 'closed' ? 'Closed' : 'Ongoing' %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Featured Track
+        <select name="featured_track_id">
+          <option value="">None</option>
+          <% featureOptions.tracks.forEach((track) => { %>
+            <option value="<%= track.id %>" <%= settings.featuredTrackId === track.id ? 'selected' : '' %>><%= track.title %><%= track.artist ? ' / ' + track.artist : '' %><%= track.album ? ' / ' + track.album : '' %></option>
+          <% }) %>
+        </select>
+      </label>
+      <label>Featured Video
+        <select name="featured_video_id">
+          <option value="">None</option>
+          <% featureOptions.videos.forEach((video) => { %>
+            <option value="<%= video.id %>" <%= settings.featuredVideoId === video.id ? 'selected' : '' %>><%= video.title %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <fieldset class="admin-checkbox-fieldset">
+        <legend>Homepage Sections</legend>
+        <div class="admin-checkbox-grid">
+          <label class="admin-checkbox-option"><input type="checkbox" name="show_music" value="1" <%= settings.showMusic ? 'checked' : '' %>> Show Music</label>
+          <label class="admin-checkbox-option"><input type="checkbox" name="show_videos" value="1" <%= settings.showVideos ? 'checked' : '' %>> Show Videos</label>
+          <label class="admin-checkbox-option"><input type="checkbox" name="show_gallery" value="1" <%= settings.showGallery ? 'checked' : '' %>> Show Gallery</label>
+          <label class="admin-checkbox-option"><input type="checkbox" name="show_projects" value="1" <%= settings.showProjects ? 'checked' : '' %>> Show Projects</label>
+        </div>
+      </fieldset>
+
+      <p class="admin-section-note">Featured items appear only when their section is visible and published.</p>
+      <button type="submit">Save Homepage Settings</button>
+    </form>
+  </section>
+
+  <section class="admin-section-card">
+    <h3>Links</h3>
+    <p class="admin-section-note">Homepage links are managed separately.</p>
+    <p><a href="/admin/homepage-links">Manage Homepage Links</a></p>
+
+    <h3 style="margin-top: 1.5rem;">Editorial Sections</h3>
+    <p class="admin-section-note">Existing homepage sections can still be edited here. New section creation is hidden so the homepage stays curated and fixed.</p>
+
+    <% if (homepageSections && homepageSections.length) { %>
+      <ul class="admin-list" style="margin-top: 1rem;">
+        <% homepageSections.forEach((section) => { %>
+          <li>
+            <span class="item-title"><strong><%= section.sectionTypeLabel %></strong></span>
+            <% if (section.title_override) { %>
+              <span> / <%= section.title_override %></span>
+            <% } %>
+            <span class="status-badge"><%= section.enabled ? 'Enabled' : 'Hidden' %></span>
+            <div class="admin-item-actions">
+              <a href="/admin/homepage-sections/<%= section.id %>/edit">edit</a>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="admin-section-note">No editorial sections yet.</p>
+    <% } %>
+
+    <% if (unavailableSelections && unavailableSelections.length) { %>
+      <div class="admin-inline-note-group">
+        <h4>Unavailable Saved Selections</h4>
+        <% unavailableSelections.forEach((message) => { %>
+          <p class="admin-section-note"><%= message %></p>
+        <% }) %>
+      </div>
+    <% } %>
+
+  </section>
+</div>
+
+<%- include('../partials/footer') %>

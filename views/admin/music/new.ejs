@@ -5,14 +5,24 @@
 <form action="/admin/music" method="post" enctype="multipart/form-data" class="admin-form" id="single-upload-form" data-no-soft-submit="true" data-upload-progress-form data-upload-processing-label="Upload complete. Finalising track..." data-upload-processing-label-wav="Upload complete. Converting audio to MP3..." data-upload-files-label-singular="track" data-upload-files-label-plural="tracks">
   <%- include('../../partials/csrf-field') %>
   <label>Title: <input type="text" name="title" data-metadata-field="title"></label>
+  <label>Slug: <input type="text" name="slug" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only. Numeric-only slugs are not allowed.</p>
   <label>Artist: <input type="text" name="artist" data-metadata-field="artist"></label>
   <label>Album: <input type="text" name="album" data-metadata-field="album"></label>
   <label>Year: <input type="number" name="year" data-metadata-field="year"></label>
   <label>Description:<textarea name="description"></textarea></label>
+  <label>Tags: <input type="text" name="tags" placeholder="ambient, live set, instrumental"></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= option.value === 'published' ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Scheduled Publish Time: <input type="datetime-local" name="published_at"></label>
   <label>Audio File: <input type="file" name="file" accept="audio/*" required id="single-track-audio"></label>
-  <p id="metadata-status" style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Choose an audio file to auto-fill embedded metadata where available.</p>
+  <p id="metadata-status" style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Choose an audio file to load embedded metadata.</p>
   <label>Cover Image: <input type="file" name="cover" accept="image/*" id="single-track-cover"></label>
-  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Manual cover upload overrides any embedded cover found in the audio file.</p>
   <section class="upload-feedback" data-upload-feedback hidden aria-live="polite" aria-atomic="true">
     <div class="upload-feedback-header">
       <h3 data-upload-feedback-title>Preparing upload</h3>
@@ -35,7 +45,6 @@
     <p style="font-size:0.8rem;color:#888; margin-bottom:0.5rem;">Embedded cover preview</p>
     <img id="embedded-cover-image" alt="Embedded cover preview" style="max-width:180px; border:1px solid #333; display:block;">
   </div>
-  <label>Order Index: <input type="number" name="order_index"></label>
 
   <h3>Playlist Assignment</h3>
   <label>Assign to Existing Playlist:
@@ -50,6 +59,23 @@
   </label>
   <p>or</p>
   <label>Create New Playlist: <input type="text" name="new_playlist_title" placeholder="e.g. My Album"></label>
+
+  <h3>Connected Content</h3>
+  <label>Related Videos:
+    <select name="related_video_ids" multiple size="5">
+      <% relationshipOptions.videos.forEach((video) => { %>
+        <option value="<%= video.id %>" <%= relationshipSelections.relatedVideoIds.includes(video.id) ? 'selected' : '' %>><%= video.title %> (<%= video.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Projects:
+    <select name="related_project_ids" multiple size="5">
+      <% relationshipOptions.projects.forEach((project) => { %>
+        <option value="<%= project.id %>" <%= relationshipSelections.relatedProjectIds.includes(project.id) ? 'selected' : '' %>><%= project.title %> (<%= project.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
 
   <button type="submit">Upload</button>
 </form>
@@ -88,7 +114,7 @@
 
     coverInput.addEventListener('change', () => {
       if (coverInput.files.length) {
-        setStatus('Manual cover selected. It will override any embedded cover on upload.');
+        setStatus('Manual cover selected.');
         setPreview(null);
       }
     });
@@ -98,7 +124,7 @@
       if (!file) {
         applyMetadata({ title: '', artist: '', album: '', year: '' });
         setPreview(null);
-        setStatus('Choose an audio file to auto-fill embedded metadata where available.');
+        setStatus('Choose an audio file to load embedded metadata.');
         return;
       }
 
@@ -122,15 +148,15 @@
 
         const hasMetadata = payload.metadata && Object.values(payload.metadata).some((value) => value);
         if (payload.coverPreview && !coverInput.files.length) {
-          setStatus('Embedded metadata loaded. You can edit any field before upload, and the embedded cover will be used unless you choose another image.');
+          setStatus('Embedded metadata loaded.');
         } else if (hasMetadata) {
-          setStatus('Embedded metadata loaded. You can edit any field before upload.');
+          setStatus('Embedded metadata loaded.');
         } else {
-          setStatus('No embedded metadata found. Fill in the fields manually if needed.');
+          setStatus('No embedded metadata found.');
         }
       } catch (err) {
         console.error('Metadata preview failed:', err);
-        setStatus('Could not read embedded metadata. You can still upload the file manually.');
+        setStatus('Could not read embedded metadata.');
         setPreview(null);
       }
     });

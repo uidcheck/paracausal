@@ -2,56 +2,100 @@
 <%- include('../../partials/messages') %>
 <a href="/admin" class="back-link">&larr; Back to dashboard</a>
 <h2>Video Management</h2>
-<a href="/admin/videos/new" class="btn">Add Video</a>
-<% if (videos && videos.length) { %>
-  <section class="admin-bulk-root" data-bulk-select-root data-bulk-label-singular="video" data-bulk-label-plural="videos">
-    <div class="admin-bulk-toolbar">
-      <div class="admin-bulk-toolbar-actions">
-        <button type="button" class="btn" data-bulk-select-start>Select Videos</button>
-        <button type="button" class="btn" data-bulk-select-stop hidden>Stop Selecting</button>
-      </div>
-      <form id="videos-bulk-delete-form" action="/admin/videos/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
-        <%- include('../../partials/csrf-field') %>
-        <button type="button" class="btn admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
-        <span class="admin-bulk-selection-count" data-bulk-selection-count>0 videos selected</span>
-      </form>
+<section class="admin-bulk-root music-management-root" data-bulk-select-root data-bulk-label-singular="video" data-bulk-label-plural="videos" data-drag-sort-root data-drag-sort-endpoint="/admin/reorder/videos" data-drag-sort-enabled="<%= !publicationStatusFilter && videos && videos.length > 1 ? 'true' : 'false' %>">
+  <div class="music-management-toolbar">
+    <div class="music-management-toolbar__quick-actions">
+      <a href="/admin/videos/new" class="btn">Add Video</a>
     </div>
-    <ul class="admin-list">
+    <div class="music-management-toolbar__controls">
+      <form method="get" class="search-form admin-list-filter music-management-filter">
+        <select name="publication_status" aria-label="Filter by publication status">
+          <option value="">All statuses</option>
+          <% publicationStatusOptions.forEach((option) => { %>
+            <option value="<%= option.value %>" <%= publicationStatusFilter === option.value ? 'selected' : '' %>><%= option.label %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary">Filter</button>
+      </form>
+      <% if (videos && videos.length) { %>
+        <div class="admin-bulk-toolbar">
+          <div class="admin-bulk-toolbar-actions">
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--secondary" data-bulk-select-start aria-pressed="false">Select Videos</button>
+          </div>
+          <form id="videos-bulk-delete-form" action="/admin/videos/bulk-delete" method="post" class="admin-bulk-delete-form" data-bulk-delete-form data-no-soft-submit="true" hidden>
+            <%- include('../../partials/csrf-field') %>
+            <button type="button" class="music-management-toolbar__button music-management-toolbar__button--danger admin-bulk-delete-btn" data-bulk-delete-button disabled>Delete Selected</button>
+            <span class="admin-bulk-selection-count" data-bulk-selection-count>0 videos selected</span>
+          </form>
+          <p class="drag-sort-feedback" data-drag-sort-feedback hidden></p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+<% if (videos && videos.length) { %>
+    <ul class="admin-list" data-drag-sort-list>
     <% videos.forEach(v => { %>
-      <li data-bulk-select-item>
+      <li data-bulk-select-item data-drag-sort-item data-drag-sort-id="<%= v.id %>">
         <label class="bulk-select-checkbox-wrap">
           <input type="checkbox" name="selected_ids" value="<%= v.id %>" data-bulk-select-checkbox form="videos-bulk-delete-form">
           <span>Select</span>
         </label>
+        <button type="button" class="drag-sort-handle" data-drag-sort-handle aria-label="Drag to reorder videos" title="Drag to reorder">
+          <span class="drag-sort-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
         <span class="item-title"><%= v.title %></span>
+        <span class="status-badge status-badge-<%= v.publication_status || 'published' %>"><%= formatPublicationStatusLabel(v.publication_status) %></span>
+        <%- include('../../partials/tag-pills', { tags: v.tags, className: 'tag-pill-row-admin' }) %>
         <% const count = videoPlaylists[v.id] ? videoPlaylists[v.id].length : 0; %>
         <div class="admin-item-actions">
-          <button type="button" class="toggle-membership">Playlists (<%= count %>)</button>
+          <button type="button" class="toggle-membership" data-membership-toggle aria-expanded="false" aria-controls="video-playlists-<%= v.id %>">
+            Playlists
+            <span class="toggle-membership__count"><%= count %></span>
+          </button>
           <a href="/admin/videos/<%= v.id %>/edit">edit</a> |
           <form action="/admin/videos/<%= v.id %>?_method=DELETE" method="post" style="display:inline;">
             <%- include('../../partials/csrf-field') %>
             <button type="submit" class="link-button">delete</button>
           </form>
         </div>
-        <div class="membership-panel" style="display:none;">
+        <div id="video-playlists-<%= v.id %>" class="membership-panel membership-panel--popover" data-membership-panel hidden>
           <form method="post" action="/admin/videos/<%= v.id %>/playlists">
             <%- include('../../partials/csrf-field') %>
+            <div class="membership-panel__header">
+              <h3>Playlists</h3>
+              <span><%= count %> selected</span>
+            </div>
             <% if (playlists && playlists.length) { %>
-              <% playlists.forEach(p => { %>
-                <label style="display:block; font-size:0.85rem;">
-                  <input type="checkbox" name="playlists" value="<%= p.id %>" <%= videoPlaylists[v.id] && videoPlaylists[v.id].some(m=>m.id===p.id) ? 'checked' : '' %> > <%= p.title %>
-                </label>
-              <% }) %>
+              <div class="membership-panel__list">
+                <% playlists.forEach(p => { %>
+                  <label class="membership-option">
+                    <input type="checkbox" name="playlists" value="<%= p.id %>" <%= videoPlaylists[v.id] && videoPlaylists[v.id].some(m=>m.id===p.id) ? 'checked' : '' %> >
+                    <span><%= p.title %></span>
+                  </label>
+                <% }) %>
+              </div>
+              <div class="membership-panel__actions">
+                <button type="submit" class="music-management-toolbar__button music-management-toolbar__button--primary membership-panel__save">Save</button>
+              </div>
+            <% } else { %>
+              <p class="membership-panel__empty">No playlists yet.</p>
             <% } %>
-            <button type="submit" class="btn">Save</button>
           </form>
         </div>
       </li>
     <% }) %>
     </ul>
     <%- include('../../partials/admin-bulk-confirm-modal') %>
-  </section>
 <% } else { %>
   <p>No videos yet.</p>
 <% } %>
+</section>
 <%- include('../../partials/footer') %>

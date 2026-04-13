@@ -1,0 +1,74 @@
+<%- include('partials/header') %>
+<%- include('partials/messages') %>
+<%
+  const resolvedBackLink = backLink && backLink.href && backLink.label
+    ? backLink
+    : { href: '/', label: 'Back to home' };
+%>
+<a href="<%= resolvedBackLink.href %>" class="back-link">&larr; <%= resolvedBackLink.label %></a>
+<section class="tag-results-header">
+  <h2>Tag: <%= tag.name %></h2>
+  <p>Published items tagged <strong><%= tag.name %></strong> across PARACAUSAL.</p>
+</section>
+<% const totalResults = (results.music ? results.music.length : 0) + (results.videos ? results.videos.length : 0) + (results.gallery ? results.gallery.length : 0) + (results.projects ? results.projects.length : 0); %>
+<% if (totalResults > 0) { %>
+  <div class="tag-results-grid">
+    <% if (results.music && results.music.length) { %>
+      <section class="tag-results-section">
+        <h3>Music</h3>
+        <ul class="tag-results-list">
+          <% results.music.forEach((track) => { %>
+            <li>
+              <a href="/music/<%= track.slug %>"><%= track.title %></a>
+              <% if (track.artist) { %><span class="tag-results-meta">by <%= track.artist %></span><% } %>
+              <%- include('partials/tag-pills', { tags: track.tags, className: 'tag-pill-row-compact', tagContext: 'music' }) %>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+    <% if (results.videos && results.videos.length) { %>
+      <section class="tag-results-section">
+        <h3>Videos</h3>
+        <ul class="tag-results-list">
+          <% results.videos.forEach((video) => { %>
+            <li>
+              <a href="/videos/<%= video.slug %>"><%= video.title %></a>
+              <%- include('partials/tag-pills', { tags: video.tags, className: 'tag-pill-row-compact', tagContext: 'videos' }) %>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+    <% if (results.gallery && results.gallery.length) { %>
+      <section class="tag-results-section">
+        <h3>Gallery</h3>
+        <ul class="tag-results-list">
+          <% results.gallery.forEach((image) => { %>
+            <li>
+              <a href="/gallery/<%= image.slug %>"><%= image.title || image.filename %></a>
+              <%- include('partials/tag-pills', { tags: image.tags, className: 'tag-pill-row-compact', tagContext: 'gallery' }) %>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+    <% if (results.projects && results.projects.length) { %>
+      <section class="tag-results-section">
+        <h3>Projects</h3>
+        <ul class="tag-results-list">
+          <% results.projects.forEach((project) => { %>
+            <li>
+              <a href="/projects/<%= project.slug %>"><%= project.title %></a>
+              <% if (project.summary) { %><p class="tag-results-meta"><%= project.summary %></p><% } %>
+              <%- include('partials/tag-pills', { tags: project.tags, className: 'tag-pill-row-compact', tagContext: 'projects' }) %>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+    <% } %>
+  </div>
+<% } else { %>
+  <p>No published content is using this tag yet.</p>
+<% } %>
+<%- include('partials/footer') %>

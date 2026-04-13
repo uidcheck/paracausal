@@ -9,8 +9,8 @@
   <select name="sort">
     <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest</option>
     <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest</option>
-    <option value="closed" <%= sort === 'closed' ? 'selected' : '' %>>Closed</option>
     <option value="ongoing" <%= sort === 'ongoing' ? 'selected' : '' %>>Ongoing</option>
+    <option value="closed" <%= sort === 'closed' ? 'selected' : '' %>>Closed</option>
   </select>
   <button type="submit">Search</button>
 </form>
@@ -26,13 +26,13 @@
       </a>
     </div>
     <% if (collections && collections.length) { %>
-      <% collections.forEach(col => { %>
+      <% collections.forEach((collection) => { %>
         <div class="playlist-item">
           <a
-            class="playlist-link <%= selectedCollection === col.id ? 'active' : '' %>"
-            href="/projects?collection=<%= col.id %><%= search ? ('&search=' + encodeURIComponent(search)) : '' %><%= sort ? ('&sort=' + encodeURIComponent(sort)) : '' %>"
+            class="playlist-link <%= selectedCollection === collection.id ? 'active' : '' %>"
+            href="/projects?collection=<%= collection.id %><%= search ? ('&search=' + encodeURIComponent(search)) : '' %><%= sort ? ('&sort=' + encodeURIComponent(sort)) : '' %>"
           >
-            <%= col.title %> (<%= col.item_count || 0 %>)
+            <%= collection.title %> (<%= collection.item_count || 0 %>)
           </a>
         </div>
       <% }) %>
@@ -42,7 +42,6 @@
   </aside>
 
   <div class="projects-main">
-
     <% if (selectedCollectionInfo) { %>
       <section class="collection-info">
         <h3><%= selectedCollectionInfo.title %></h3>
@@ -56,10 +55,11 @@
     <% if (projects && projects.length) { %>
       <div class="project-list">
         <% projects.forEach((proj, index) => { %>
+          <% const heroImageUrl = proj.hero_image ? getOriginalImageUrl('projects', proj.hero_image) : ''; %>
           <a href="/projects/<%= proj.slug %>" class="project-card">
-            <% if (proj.hero_image) { %>
+            <% if (proj.hero_image && heroImageUrl) { %>
               <div class="image-container">
-                <img src="<%= getArchiveImageUrl('projects', proj.hero_image) %>" alt="<%= proj.title %> hero" class="card-image" loading="<%= index < 4 ? 'eager' : 'lazy' %>" decoding="async" width="480" height="270">
+                <img src="<%= heroImageUrl %>" alt="<%= proj.title %> hero" class="card-image" loading="<%= index < 4 ? 'eager' : 'lazy' %>" decoding="async" width="480" height="270">
               </div>
             <% } else { %>
               <div class="default-hero">
@@ -69,7 +69,8 @@
             <div class="card-content">
               <h3><%= proj.title %></h3>
               <p class="summary"><%= proj.summary %></p>
-              <% if (proj.status) { %><p class="status">Status: <%= proj.status %></p><% } %>
+              <% if (proj.projectStatusLabel) { %><p class="status">Status: <%= proj.projectStatusLabel %></p><% } %>
+              <%- include('partials/tag-pills', { tags: proj.tags, className: 'tag-pill-row-compact', tagContext: 'projects' }) %>
             </div>
           </a>
         <% }) %>

@@ -9,7 +9,7 @@ function createCsrfToken() {
 function attachCsrfToken(req, res, next) {
   const requiresToken = !!(
     req.session && req.session.admin
-  ) || req.path === '/login' || req.path === '/logout' || req.path === '/setup' || req.path.startsWith('/admin');
+  ) || req.path === '/login' || req.path === '/login/2fa' || req.path === '/logout' || req.path === '/setup' || req.path.startsWith('/admin');
 
   if (!req.session || !requiresToken) {
     res.locals.csrfToken = '';

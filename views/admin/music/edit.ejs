@@ -2,16 +2,27 @@
 <%- include('../../partials/messages') %>
 <a href="/admin/music" class="back-link">&larr; Back to music management</a>
 <h2>Edit Track</h2>
+<%- include('../../partials/admin-copy-link-actions', { publicationStatus: track.publication_status, publicUrl, previewUrl }) %>
 <form action="/admin/music/<%= track.id %>?_method=PUT" method="post" enctype="multipart/form-data" class="admin-form">
   <%- include('../../partials/csrf-field') %>
   <label>Title: <input type="text" name="title" value="<%= track.title %>" required></label>
+  <label>Slug: <input type="text" name="slug" value="<%= track.slug || '' %>" placeholder="leave blank to generate from title"></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Letters, numbers and hyphens only. Numeric-only slugs are not allowed.</p>
   <label>Artist: <input type="text" name="artist" value="<%= track.artist %>"></label>
   <label>Album: <input type="text" name="album" value="<%= track.album %>"></label>
   <label>Year: <input type="number" name="year" value="<%= track.year %>"></label>
   <label>Description:<textarea name="description"><%= track.description %></textarea></label>
+  <label>Tags: <input type="text" name="tags" value="<%= track.tagInput || '' %>" placeholder="ambient, live set, instrumental"></label>
+  <label>Status:
+    <select name="publication_status">
+      <% publicationStatusOptions.forEach((option) => { %>
+        <option value="<%= option.value %>" <%= (track.publication_status || 'published') === option.value ? 'selected' : '' %>><%= option.label %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Scheduled Publish Time: <input type="datetime-local" name="published_at" value="<%= toDateTimeLocalValue(track.published_at) %>"></label>
   <label>Audio File: <input type="file" name="file" accept="audio/*"></label>
   <label>Cover Image: <input type="file" name="cover" accept="image/*"></label>
-  <label>Order Index: <input type="number" name="order_index" value="<%= track.order_index %>"></label>
   <% if (playlists && playlists.length) { %>
     <label>Playlists:
       <select name="playlists" multiple size="4">
@@ -22,6 +33,22 @@
     </label>
     <p style="font-size:0.8rem;color:#888;">(hold Ctrl/Cmd to select multiple)</p>
   <% } %>
+  <h3>Connected Content</h3>
+  <label>Related Videos:
+    <select name="related_video_ids" multiple size="5">
+      <% relationshipOptions.videos.forEach((video) => { %>
+        <option value="<%= video.id %>" <%= relationshipSelections.relatedVideoIds.includes(video.id) ? 'selected' : '' %>><%= video.title %> (<%= video.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Related Projects:
+    <select name="related_project_ids" multiple size="5">
+      <% relationshipOptions.projects.forEach((project) => { %>
+        <option value="<%= project.id %>" <%= relationshipSelections.relatedProjectIds.includes(project.id) ? 'selected' : '' %>><%= project.title %> (<%= project.publicationStatusLabel %>)</option>
+      <% }) %>
+    </select>
+  </label>
+  <p style="font-size:0.8rem;color:#888;">Hold Ctrl or Cmd to select multiple items.</p>
   <button type="submit">Update</button>
 </form>
 <%- include('../../partials/footer') %>

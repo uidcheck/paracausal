@@ -1,0 +1,158 @@
+<%- include('partials/header') %>
+<%- include('partials/messages') %>
+<%
+  const detailTags = Array.isArray(track.tags) ? track.tags : [];
+  const hasDetailTags = detailTags.length > 0;
+  const detailMetaRows = [];
+  const serializedPlayerQueue = JSON.stringify(playerQueue || []).replace(/</g, '\\u003c');
+  if (track.artist) detailMetaRows.push({ label: 'Artist', value: track.artist });
+  if (track.album) detailMetaRows.push({ label: 'Album', value: track.album });
+  if (track.year) detailMetaRows.push({ label: 'Year', value: track.year });
+  if (track.durationFormatted) detailMetaRows.push({ label: 'Length', value: track.durationFormatted });
+%>
+<div
+  class="music-track-detail"
+  data-music-detail-page
+  data-track-url="<%= trackUrl %>"
+  data-filename="<%= track.filename %>"
+  data-slug="<%= track.slug %>"
+  data-title="<%= track.title %>"
+  data-artist="<%= track.artist || '' %>"
+  data-album="<%= track.album || '' %>"
+  data-year="<%= track.year || '' %>"
+  data-description="<%= track.description || '' %>"
+  data-tags="<%= encodeURIComponent(JSON.stringify(detailTags)) %>"
+  data-cover-url="<%= track.cover_image ? getOriginalImageUrl('music', track.cover_image) : '' %>"
+  data-cover-alt="<%= track.title %> cover">
+  <a href="/music" class="back-link">&larr; Back to music</a>
+  <div class="music-track-detail__layout">
+    <section class="music-track-detail__media">
+      <% if (track.cover_image) { %>
+        <div class="music-track-detail__cover-wrap">
+          <img src="<%= getOriginalImageUrl('music', track.cover_image) %>" alt="<%= track.title %> cover" class="music-track-detail__cover" width="300" height="300">
+        </div>
+      <% } %>
+      <div class="music-track-detail__player-control-wrap" aria-label="Track playback controls">
+        <button type="button" class="music-track-detail__play-toggle" data-play-track-player>Play</button>
+      </div>
+    </section>
+    <section class="music-track-detail__content">
+      <h2><%= track.title %></h2>
+      <div class="music-track-detail__info-card">
+        <% if (detailMetaRows.length || hasDetailTags || track.description) { %>
+          <div class="music-track-detail__meta-row">
+            <% if (detailMetaRows.length) { %>
+              <dl class="music-track-detail__meta">
+                <% detailMetaRows.forEach((row) => { %>
+                  <div>
+                    <dt><%= row.label %></dt>
+                    <dd><%= row.value %></dd>
+                  </div>
+                <% }) %>
+              </dl>
+            <% } %>
+            <% if (hasDetailTags || track.description) { %>
+              <div class="music-track-detail__meta-side">
+                <% if (hasDetailTags) { %>
+                  <div class="music-track-detail__meta-block music-track-detail__meta-block--tags">
+                    <span class="music-track-detail__meta-label">Tags</span>
+                    <%- include('partials/tag-pills', { tags: detailTags, className: 'music-track-detail__tag-list', tagContext: 'music' }) %>
+                  </div>
+                <% } %>
+                <% if (track.description) { %>
+                  <div class="music-track-detail__meta-block music-track-detail__meta-block--notes">
+                    <span class="music-track-detail__meta-label">Notes</span>
+                    <p class="music-track-detail__description"><%= track.description %></p>
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+        <div class="music-track-detail__meta-actions" aria-label="Track actions">
+          <button type="button" class="music-track-detail__meta-action" data-copy-track-link>Copy link</button>
+        </div>
+        <p class="music-track-detail__action-status" data-track-action-status hidden aria-live="polite"></p>
+      </div>
+      <% if (previousTrack || nextTrack) { %>
+        <nav class="music-track-detail__pager" aria-label="Track navigation">
+          <% if (previousTrack) { %>
+            <a href="/music/<%= previousTrack.slug %>" class="music-track-detail__pager-link music-track-detail__pager-link--prev">
+              <span class="music-track-detail__pager-label">Previous track</span>
+              <strong><%= previousTrack.title %></strong>
+            </a>
+          <% } %>
+          <% if (nextTrack) { %>
+            <a href="/music/<%= nextTrack.slug %>" class="music-track-detail__pager-link music-track-detail__pager-link--next">
+              <span class="music-track-detail__pager-label">Next track</span>
+              <strong><%= nextTrack.title %></strong>
+            </a>
+          <% } %>
+        </nav>
+      <% } %>
+
+      <% if ((relatedVideos && relatedVideos.length) || (relatedProjects && relatedProjects.length)) { %>
+        <section class="music-track-detail__related" style="margin-top: 2rem;">
+          <% if (relatedVideos && relatedVideos.length) { %>
+            <div class="music-track-detail__related-header">
+              <h3>Related videos</h3>
+            </div>
+            <ul>
+              <% relatedVideos.forEach((video) => { %>
+                <li>
+                  <a href="/videos/<%= video.slug %>"><%= video.title %></a>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+
+          <% if (relatedProjects && relatedProjects.length) { %>
+            <div class="music-track-detail__related-header">
+              <h3>Related projects</h3>
+            </div>
+            <ul>
+              <% relatedProjects.forEach((project) => { %>
+                <li>
+                  <a href="/projects/<%= project.slug %>"><%= project.title %></a>
+                  <% if (project.projectStatusLabel) { %><span> / <%= project.projectStatusLabel %></span><% } %>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+        </section>
+      <% } %>
+    </section>
+  </div>
+  <% if (relatedTracks && relatedTracks.length) { %>
+    <section class="music-track-detail__related">
+      <div class="music-track-detail__related-header">
+        <h3>Related tracks</h3>
+      </div>
+      <div class="music-track-detail__related-grid">
+        <% relatedTracks.forEach((relatedTrack) => { %>
+          <% const relatedCoverUrl = relatedTrack.cover_image ? getOriginalImageUrl('music', relatedTrack.cover_image) : ''; %>
+          <a href="/music/<%= relatedTrack.slug %>" class="music-track-detail__related-card">
+            <div class="music-track-detail__related-cover-wrap">
+              <% if (relatedCoverUrl) { %>
+                <img src="<%= relatedCoverUrl %>" alt="<%= relatedTrack.title %> cover" class="music-track-detail__related-cover" loading="lazy" decoding="async" width="140" height="140">
+              <% } else { %>
+                <div class="music-track-detail__related-cover music-track-detail__related-cover--empty">Track</div>
+              <% } %>
+            </div>
+            <div class="music-track-detail__related-body">
+              <strong><%= relatedTrack.title %></strong>
+              <% if (relatedTrack.artist) { %>
+                <span><%= relatedTrack.artist %></span>
+              <% } %>
+              <% if (relatedTrack.album || relatedTrack.year) { %>
+                <span><%= [relatedTrack.album, relatedTrack.year].filter(Boolean).join(' / ') %></span>
+              <% } %>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+</div>
+<script id="music-detail-queue-data" type="application/json"><%- serializedPlayerQueue %></script>
+<%- include('partials/footer') %>
