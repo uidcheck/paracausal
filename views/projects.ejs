@@ -1,19 +1,6 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
 <h2>Projects</h2>
-<form method="get" class="search-form">
-  <% if (selectedCollection) { %>
-    <input type="hidden" name="collection" value="<%= selectedCollection %>">
-  <% } %>
-  <input type="text" name="search" value="<%= search || '' %>" placeholder="Search projects">
-  <select name="sort">
-    <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest</option>
-    <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest</option>
-    <option value="ongoing" <%= sort === 'ongoing' ? 'selected' : '' %>>Ongoing</option>
-    <option value="closed" <%= sort === 'closed' ? 'selected' : '' %>>Closed</option>
-  </select>
-  <button type="submit">Search</button>
-</form>
 <div class="page-with-sidebar">
   <aside class="playlist-panel">
     <h3>Collections</h3>
@@ -42,6 +29,20 @@
   </aside>
 
   <div class="projects-main">
+    <form method="get" class="search-form">
+      <% if (selectedCollection) { %>
+        <input type="hidden" name="collection" value="<%= selectedCollection %>">
+      <% } %>
+      <input type="text" name="search" value="<%= search || '' %>" placeholder="Search projects">
+      <select name="sort">
+        <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest</option>
+        <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest</option>
+        <option value="ongoing" <%= sort === 'ongoing' ? 'selected' : '' %>>Ongoing</option>
+        <option value="closed" <%= sort === 'closed' ? 'selected' : '' %>>Closed</option>
+      </select>
+      <button type="submit">Search</button>
+    </form>
+
     <% if (selectedCollectionInfo) { %>
       <section class="collection-info">
         <h3><%= selectedCollectionInfo.title %></h3>
