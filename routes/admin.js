@@ -552,6 +552,15 @@ function normalizeReleaseDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmedValue) ? trimmedValue : null;
 }
 
+function normalizeOptionalMultilineText(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalizedValue = value.replace(/\r\n?/g, '\n').trim();
+  return normalizedValue || null;
+}
+
 function getScheduledPublicationValidationError(publicationStatus, publishedAt) {
   if (publicationStatus === SCHEDULED_CONTENT_STATUS && !publishedAt) {
     return 'Choose a publish time for scheduled content.';
@@ -1462,7 +1471,7 @@ router.post('/music/metadata-preview', uploadMusicPreview.single('file'), valida
 
 router.post('/music', uploadMusicFields, validateCsrfToken, async (req, res) => {
   const db = req.app.locals.db;
-  const { title, artist, album, year, description, playlist_id, new_playlist_title, tags, slug: rawSlug } = req.body;
+  const { title, artist, album, year, description, lyrics, playlist_id, new_playlist_title, tags, slug: rawSlug } = req.body;
   const publicationStatus = normalizePublicationStatus(req.body.publication_status);
   const publishedAt = normalizePublicationTimestamp(req.body.published_at);
   const audioFile = req.files && req.files.file ? req.files.file[0] : null;
@@ -1505,6 +1514,8 @@ router.post('/music', uploadMusicFields, validateCsrfToken, async (req, res) => 
     const finalArtist = (artist || '').trim() || preparedUpload.metadata.artist || null;
     const finalAlbum = (album || '').trim() || preparedUpload.metadata.album || null;
     const finalYear = (year || '').toString().trim() || preparedUpload.metadata.year || null;
+    const normalizedDescription = normalizeOptionalMultilineText(description);
+    const normalizedLyrics = normalizeOptionalMultilineText(lyrics);
     const { slug, error: slugError } = await resolveOptionalSlug(db, {
       tableName: 'music',
       title: finalTitle,
@@ -1534,17 +1545,18 @@ router.post('/music', uploadMusicFields, validateCsrfToken, async (req, res) => 
     try {
       let targetPlaylistId = (playlist_id || '').trim();
       if (new_playlist_title && new_playlist_title.trim()) {
-        targetPlaylistId = await createMusicPlaylist(db, new_playlist_title, description || null);
+        targetPlaylistId = await createMusicPlaylist(db, new_playlist_title, normalizedDescription);
       }
 
       const result = await db.run(
-        'INSERT INTO music (title, slug, artist, album, year, description, publication_status, published_at, sort_order, filename, cover_image, order_index, preview_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO music (title, slug, artist, album, year, description, lyrics, publication_status, published_at, sort_order, filename, cover_image, order_index, preview_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         finalTitle,
         slug,
         finalArtist,
         finalAlbum,
         finalYear,
-        description,
+        normalizedDescription,
+        normalizedLyrics,
         publicationStatus,
         publicationStatus === SCHEDULED_CONTENT_STATUS ? publishedAt : null,
         nextSortOrder,
@@ -1609,11 +1621,13 @@ router.get('/music/batch', async (req, res) => {
 
 router.post('/music/batch', uploadBatchMusic, validateCsrfToken, async (req, res) => {
   const db = req.app.locals.db;
-  const { default_artist, default_album, default_year, shared_description, playlist_id, new_playlist_title } = req.body;
+  const { default_artist, default_album, default_year, shared_description, shared_lyrics, playlist_id, new_playlist_title } = req.body;
   const publicationStatus = normalizePublicationStatus(req.body.publication_status);
   const publishedAt = normalizePublicationTimestamp(req.body.published_at);
   const files = req.files.files || [];
   const sharedCoverFile = req.files.shared_cover ? req.files.shared_cover[0] : null;
+  const normalizedSharedDescription = normalizeOptionalMultilineText(shared_description);
+  const normalizedSharedLyrics = normalizeOptionalMultilineText(shared_lyrics);
 
   let targetPlaylistId = playlist_id;
   const preparedTracks = [];
@@ -1657,7 +1671,7 @@ router.post('/music/batch', uploadBatchMusic, validateCsrfToken, async (req, res
     await db.exec('BEGIN TRANSACTION');
     try {
       if (new_playlist_title && new_playlist_title.trim()) {
-        targetPlaylistId = await createMusicPlaylist(db, new_playlist_title, shared_description || null);
+        targetPlaylistId = await createMusicPlaylist(db, new_playlist_title, normalizedSharedDescription);
       }
 
       let nextSortOrder = await getNextSortOrder(db, 'music');
@@ -1678,12 +1692,14 @@ router.post('/music/batch', uploadBatchMusic, validateCsrfToken, async (req, res
         });
 
         const result = await db.run(
-          'INSERT INTO music (title, slug, artist, album, year, publication_status, published_at, sort_order, filename, cover_image, order_index, preview_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+          'INSERT INTO music (title, slug, artist, album, year, description, lyrics, publication_status, published_at, sort_order, filename, cover_image, order_index, preview_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
           title,
           slug,
           artist,
           album,
           year,
+          normalizedSharedDescription,
+          normalizedSharedLyrics,
           publicationStatus,
           publicationStatus === SCHEDULED_CONTENT_STATUS ? publishedAt : null,
           nextSortOrder,
@@ -1760,7 +1776,7 @@ router.get('/music/:id/edit', async (req, res) => {
 
 router.put('/music/:id', uploadMusicFields, validateCsrfToken, async (req, res) => {
   const db = req.app.locals.db;
-  const { title, artist, album, year, description, playlists, tags, slug: rawSlug } = req.body;
+  const { title, artist, album, year, description, lyrics, playlists, tags, slug: rawSlug } = req.body;
   const publicationStatus = normalizePublicationStatus(req.body.publication_status);
   const publishedAt = normalizePublicationTimestamp(req.body.published_at);
   const audioFile = req.files && req.files.file ? req.files.file[0] : null;
@@ -1789,6 +1805,8 @@ router.put('/music/:id', uploadMusicFields, validateCsrfToken, async (req, res) 
 
     const filename = preparedAudio ? preparedAudio.playbackFilename : track.filename;
     const coverImage = cover || track.cover_image;
+    const normalizedDescription = normalizeOptionalMultilineText(description);
+    const normalizedLyrics = normalizeOptionalMultilineText(lyrics);
     const { slug, error: slugError } = await resolveOptionalSlug(db, {
       tableName: 'music',
       title,
@@ -1813,8 +1831,8 @@ router.put('/music/:id', uploadMusicFields, validateCsrfToken, async (req, res) 
     await db.exec('BEGIN TRANSACTION');
     try {
       await db.run(
-        'UPDATE music SET title=?, slug=?, artist=?, album=?, year=?, description=?, publication_status=?, published_at=?, filename=?, cover_image=?, order_index=? WHERE id=?',
-        title, slug, artist, album, year, description, publicationStatus, publicationStatus === SCHEDULED_CONTENT_STATUS ? publishedAt : null, filename, coverImage, track.order_index || null, req.params.id
+        'UPDATE music SET title=?, slug=?, artist=?, album=?, year=?, description=?, lyrics=?, publication_status=?, published_at=?, filename=?, cover_image=?, order_index=? WHERE id=?',
+        title, slug, artist, album, year, normalizedDescription, normalizedLyrics, publicationStatus, publicationStatus === SCHEDULED_CONTENT_STATUS ? publishedAt : null, filename, coverImage, track.order_index || null, req.params.id
       );
 
       await db.run('DELETE FROM music_playlist_items WHERE music_id = ?', req.params.id);

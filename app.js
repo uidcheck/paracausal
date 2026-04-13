@@ -188,6 +188,10 @@ async function ensurePhaseTwoColumns(db) {
   await ensureColumnExists(db, 'project_updates', 'linked_video_id', 'INTEGER');
 }
 
+async function ensureMusicLyricsColumn(db) {
+  await ensureColumnExists(db, 'music', 'lyrics', 'TEXT');
+}
+
 async function ensureHomepageSectionColumns(db) {
   const homepageSectionsTable = await db.get(
     `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'homepage_sections'`
@@ -553,6 +557,7 @@ async function applySchemaWithCompatibility(db, schema) {
   await ensurePublicationStatusColumns(db);
   await ensurePreviewTokenColumns(db);
   await ensurePhaseTwoColumns(db);
+  await ensureMusicLyricsColumn(db);
   await ensureHomepageSectionColumns(db);
   await ensureProjectStatusColumn(db);
   await ensureSortOrderColumns(db);

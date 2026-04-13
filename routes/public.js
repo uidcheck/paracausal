@@ -334,6 +334,98 @@ async function resolveMusicPlaylistFilter(db, rawPlaylistValue) {
   return playlist || null;
 }
 
+function normalizeMusicSearchTerm(value) {
+  return String(value || '').trim();
+}
+
+function getMusicPlaylistQueryValue(playlist) {
+  if (!playlist) {
+    return '';
+  }
+
+  const rawValue = typeof playlist === 'object'
+    ? playlist.slug || playlist.id
+    : playlist;
+
+  return rawValue === null || typeof rawValue === 'undefined'
+    ? ''
+    : String(rawValue).trim();
+}
+
+function buildMusicQuerySuffix({ playlist = null, search = '' } = {}) {
+  const params = new URLSearchParams();
+  const playlistValue = getMusicPlaylistQueryValue(playlist);
+  const normalizedSearch = normalizeMusicSearchTerm(search);
+
+  if (playlistValue) {
+    params.set('playlist', playlistValue);
+  }
+  if (normalizedSearch) {
+    params.set('search', normalizedSearch);
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function getMusicQueueContextLabel(playlist, search) {
+  if (playlist && playlist.title) {
+    return playlist.title;
+  }
+
+  return normalizeMusicSearchTerm(search) ? 'Filtered archive' : 'Archive';
+}
+
+async function loadVisibleMusicTracks(db, { playlist = null, search = '', playableOnly = false } = {}) {
+  const normalizedSearch = normalizeMusicSearchTerm(search);
+
+  if (playlist) {
+    let sql = `SELECT m.*
+               FROM music m
+               JOIN music_playlist_items mpi ON mpi.music_id = m.id
+               WHERE mpi.playlist_id = ?
+                 AND ${getPublicListingVisibilityClause('m')}`;
+    const params = [playlist.id];
+
+    if (playableOnly) {
+      sql += `
+                 AND m.filename IS NOT NULL
+                 AND TRIM(m.filename) != ''`;
+    }
+
+    if (normalizedSearch) {
+      const term = `%${normalizedSearch}%`;
+      const normalizedTerm = `%${normalizedSearch.toLowerCase()}%`;
+      sql += `
+                 AND (m.title LIKE ? OR m.artist LIKE ? OR m.album LIKE ? OR ${getTagMatchExistsClause('music', 'm.id')})`;
+      params.push(term, term, term, term, normalizedTerm);
+    }
+
+    sql += ' ORDER BY mpi.order_index, m.id';
+    return db.all(sql, ...params);
+  }
+
+  let sql = `SELECT music.* FROM music WHERE ${getPublicListingVisibilityClause()}`;
+  const params = [];
+
+  if (playableOnly) {
+    sql += `
+       AND filename IS NOT NULL
+       AND TRIM(filename) != ''`;
+  }
+
+  if (normalizedSearch) {
+    const term = `%${normalizedSearch}%`;
+    const normalizedTerm = `%${normalizedSearch.toLowerCase()}%`;
+    sql += `
+       AND (title LIKE ? OR artist LIKE ? OR album LIKE ? OR ${getTagMatchExistsClause('music', 'music.id')})`;
+    params.push(term, term, term, term, normalizedTerm);
+  }
+
+  sql += ' ORDER BY sort_order ASC, id DESC';
+  return db.all(sql, ...params);
+}
+
 async function loadPreviewableContentBySlug(db, tableName, slug, previewToken, options = {}) {
   const { alias = '', extraWhere = '' } = options;
   const aliasPrefix = alias ? `${alias}.` : '';
@@ -693,6 +785,7 @@ router.get('/music', async (req, res) => {
   try {
     const db = req.app.locals.db;
     const resolvedPlaylist = await resolveMusicPlaylistFilter(db, req.query.playlist);
+    const searchTerm = normalizeMusicSearchTerm(req.query.search);
     // fetch playlists and optionally their items for sidebar
     const playlists = await db.all('SELECT * FROM music_playlists ORDER BY title');
     for (const pl of playlists) {
@@ -707,33 +800,10 @@ router.get('/music', async (req, res) => {
       );
     }
 
-    let sql = `SELECT music.* FROM music WHERE ${getPublicListingVisibilityClause()}`;
-    let params = [];
-
-    // if filtering by playlist we will join, but keep search
-    if (resolvedPlaylist) {
-      sql = `SELECT m.* FROM music m
-             JOIN music_playlist_items mpi ON mpi.music_id = m.id
-             WHERE mpi.playlist_id = ?`;
-      params = [resolvedPlaylist.id];
-      sql += ` AND ${getPublicListingVisibilityClause('m')}`;
-      if (req.query.search) {
-        sql += ` AND (m.title LIKE ? OR m.artist LIKE ? OR m.album LIKE ? OR ${getTagMatchExistsClause('music', 'm.id')})`;
-        const term = `%${req.query.search}%`;
-        const normalizedTerm = `%${String(req.query.search).trim().toLowerCase()}%`;
-        params.push(term, term, term, term, normalizedTerm);
-      }
-      sql += ' ORDER BY mpi.order_index, m.id';
-    } else {
-      if (req.query.search) {
-        sql += ` AND (title LIKE ? OR artist LIKE ? OR album LIKE ? OR ${getTagMatchExistsClause('music', 'music.id')})`;
-        const term = `%${req.query.search}%`;
-        const normalizedTerm = `%${String(req.query.search).trim().toLowerCase()}%`;
-        params.push(term, term, term, term, normalizedTerm);
-      }
-      sql += ' ORDER BY sort_order ASC, id DESC';
-    }
-    const tracks = await db.all(sql, ...params);
+    const tracks = await loadVisibleMusicTracks(db, {
+      playlist: resolvedPlaylist,
+      search: searchTerm,
+    });
     await attachTagsToItems(db, 'music', tracks);
     trackPublicPageView(req, {
       requestPath: '/music',
@@ -742,9 +812,13 @@ router.get('/music', async (req, res) => {
     });
     res.render('music', {
       tracks,
-      search: req.query.search || '',
+      search: searchTerm,
       playlists,
       selectedPlaylist: resolvedPlaylist,
+      musicDetailQuery: buildMusicQuerySuffix({
+        playlist: resolvedPlaylist,
+        search: searchTerm,
+      }),
       pageMeta: buildPageMeta(req, {
         title: 'Music',
         description: 'Listen through music on PARACAUSAL.',
@@ -762,6 +836,8 @@ router.get('/music/:slug', async (req, res) => {
   const getOriginalImageUrl = req.app.locals.getOriginalImageUrl;
   const requestedSlug = String(req.params.slug || '').trim();
   const previewToken = getRequestedPreviewToken(req);
+  const requestedPlaylist = await resolveMusicPlaylistFilter(db, req.query.playlist);
+  const requestedSearch = normalizeMusicSearchTerm(req.query.search);
 
   const track = await loadPreviewableContentBySlug(db, 'music', requestedSlug, previewToken, {
     extraWhere: "AND filename IS NOT NULL AND TRIM(filename) != ''",
@@ -771,14 +847,21 @@ router.get('/music/:slug', async (req, res) => {
     return res.status(404).render('404');
   }
 
-  const visibleTracks = await db.all(
-    `SELECT *
-     FROM music
-     WHERE ${getPublicListingVisibilityClause()}
-       AND filename IS NOT NULL
-       AND TRIM(filename) != ''
-     ORDER BY sort_order ASC, id DESC`
-  );
+  let queuePlaylist = requestedPlaylist;
+  let queueSearch = requestedSearch;
+  let visibleTracks = await loadVisibleMusicTracks(db, {
+    playlist: queuePlaylist,
+    search: queueSearch,
+    playableOnly: true,
+  });
+  let currentTrackIndex = visibleTracks.findIndex((candidate) => candidate.id === track.id);
+
+  if (currentTrackIndex < 0 && (queuePlaylist || queueSearch)) {
+    queuePlaylist = null;
+    queueSearch = '';
+    visibleTracks = await loadVisibleMusicTracks(db, { playableOnly: true });
+    currentTrackIndex = visibleTracks.findIndex((candidate) => candidate.id === track.id);
+  }
 
   await attachTagsToItems(db, 'music', [track]);
   await attachTagsToItems(db, 'music', visibleTracks);
@@ -787,7 +870,6 @@ router.get('/music/:slug', async (req, res) => {
   track.durationSeconds = durationSeconds;
   track.durationFormatted = durationFormatted;
 
-  const currentTrackIndex = visibleTracks.findIndex((candidate) => candidate.id === track.id);
   const previousTrack = currentTrackIndex > 0
     ? visibleTracks[currentTrackIndex - 1]
     : null;
@@ -814,6 +896,10 @@ router.get('/music/:slug', async (req, res) => {
   }));
   const trackUrl = `${req.protocol}://${req.get('host')}/music/${track.slug}`;
   const trackConnections = await loadTrackConnections(db, track.id);
+  const navigationQuery = buildMusicQuerySuffix({
+    playlist: queuePlaylist,
+    search: queueSearch,
+  });
 
   trackPublicPageView(req, {
     requestPath: `/music/${track.slug}`,
@@ -827,6 +913,13 @@ router.get('/music/:slug', async (req, res) => {
     track,
     previewMode: !!previewToken,
     trackUrl,
+    backToMusicPath: `/music${navigationQuery}`,
+    navigationQuery,
+    queueContext: {
+      label: getMusicQueueContextLabel(queuePlaylist, queueSearch),
+      trackPosition: currentTrackIndex >= 0 ? currentTrackIndex + 1 : null,
+      trackCount: visibleTracks.length,
+    },
     previousTrack,
     nextTrack,
     relatedTracks,

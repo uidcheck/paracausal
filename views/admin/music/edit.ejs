@@ -12,6 +12,7 @@
   <label>Album: <input type="text" name="album" value="<%= track.album %>"></label>
   <label>Year: <input type="number" name="year" value="<%= track.year %>"></label>
   <label>Description:<textarea name="description"><%= track.description %></textarea></label>
+  <label>Lyrics:<textarea name="lyrics" placeholder="Optional full lyrics for the right-side drawer"><%= track.lyrics || '' %></textarea></label>
   <label>Tags: <input type="text" name="tags" value="<%= track.tagInput || '' %>" placeholder="ambient, live set, instrumental"></label>
   <label>Status:
     <select name="publication_status">

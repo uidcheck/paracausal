@@ -3,8 +3,14 @@
 <%
   const detailTags = Array.isArray(track.tags) ? track.tags : [];
   const hasDetailTags = detailTags.length > 0;
+  const hasLyrics = !!(track.lyrics && String(track.lyrics).trim());
   const detailMetaRows = [];
   const serializedPlayerQueue = JSON.stringify(playerQueue || []).replace(/</g, '\\u003c');
+  const navigationSuffix = navigationQuery || '';
+  const backLinkHref = backToMusicPath || '/music';
+  const queueContextName = queueContext && queueContext.label && queueContext.label !== 'Archive'
+    ? queueContext.label
+    : '';
   if (track.artist) detailMetaRows.push({ label: 'Artist', value: track.artist });
   if (track.album) detailMetaRows.push({ label: 'Album', value: track.album });
   if (track.year) detailMetaRows.push({ label: 'Year', value: track.year });
@@ -21,10 +27,11 @@
   data-album="<%= track.album || '' %>"
   data-year="<%= track.year || '' %>"
   data-description="<%= track.description || '' %>"
+  data-queue-source-label="<%= queueContext && queueContext.label ? queueContext.label : '' %>"
   data-tags="<%= encodeURIComponent(JSON.stringify(detailTags)) %>"
   data-cover-url="<%= track.cover_image ? getOriginalImageUrl('music', track.cover_image) : '' %>"
   data-cover-alt="<%= track.title %> cover">
-  <a href="/music" class="back-link">&larr; Back to music</a>
+  <a href="<%= backLinkHref %>" class="back-link">&larr; Back to music</a>
   <div class="music-track-detail__layout">
     <section class="music-track-detail__media">
       <% if (track.cover_image) { %>
@@ -38,6 +45,14 @@
     </section>
     <section class="music-track-detail__content">
       <h2><%= track.title %></h2>
+      <% if (queueContext && queueContext.trackPosition && queueContext.trackCount > 1) { %>
+        <p class="music-track-detail__context">
+          Track <strong><%= queueContext.trackPosition %></strong> of <strong><%= queueContext.trackCount %></strong>
+          <% if (queueContextName) { %>
+            <span>in <%= queueContextName %></span>
+          <% } %>
+        </p>
+      <% } %>
       <div class="music-track-detail__info-card">
         <% if (detailMetaRows.length || hasDetailTags || track.description) { %>
           <div class="music-track-detail__meta-row">
@@ -70,6 +85,9 @@
           </div>
         <% } %>
         <div class="music-track-detail__meta-actions" aria-label="Track actions">
+          <% if (hasLyrics) { %>
+            <button type="button" class="music-track-detail__meta-action" data-open-lyrics-drawer aria-controls="music-track-lyrics-drawer" aria-expanded="false">Lyrics</button>
+          <% } %>
           <button type="button" class="music-track-detail__meta-action" data-copy-track-link>Copy link</button>
         </div>
         <p class="music-track-detail__action-status" data-track-action-status hidden aria-live="polite"></p>
@@ -77,13 +95,13 @@
       <% if (previousTrack || nextTrack) { %>
         <nav class="music-track-detail__pager" aria-label="Track navigation">
           <% if (previousTrack) { %>
-            <a href="/music/<%= previousTrack.slug %>" class="music-track-detail__pager-link music-track-detail__pager-link--prev">
+            <a href="/music/<%= previousTrack.slug %><%= navigationSuffix %>" class="music-track-detail__pager-link music-track-detail__pager-link--prev">
               <span class="music-track-detail__pager-label">Previous track</span>
               <strong><%= previousTrack.title %></strong>
             </a>
           <% } %>
           <% if (nextTrack) { %>
-            <a href="/music/<%= nextTrack.slug %>" class="music-track-detail__pager-link music-track-detail__pager-link--next">
+            <a href="/music/<%= nextTrack.slug %><%= navigationSuffix %>" class="music-track-detail__pager-link music-track-detail__pager-link--next">
               <span class="music-track-detail__pager-label">Next track</span>
               <strong><%= nextTrack.title %></strong>
             </a>
@@ -123,6 +141,26 @@
       <% } %>
     </section>
   </div>
+  <% if (hasLyrics) { %>
+    <div class="music-track-detail__lyrics-drawer" id="music-track-lyrics-drawer" data-lyrics-drawer hidden aria-hidden="true">
+      <button type="button" class="music-track-detail__lyrics-backdrop" data-lyrics-dismiss aria-label="Close lyrics panel"></button>
+      <aside class="music-track-detail__lyrics-panel" role="dialog" aria-modal="true" aria-labelledby="music-track-lyrics-title">
+        <div class="music-track-detail__lyrics-header">
+          <div>
+            <span class="music-track-detail__lyrics-eyebrow">Lyrics</span>
+            <h3 id="music-track-lyrics-title" class="music-track-detail__lyrics-title"><%= track.title %></h3>
+            <% if (track.artist || track.album) { %>
+              <p class="music-track-detail__lyrics-meta"><%= [track.artist, track.album].filter(Boolean).join(' / ') %></p>
+            <% } %>
+          </div>
+          <button type="button" class="music-track-detail__lyrics-close" data-lyrics-dismiss>Close</button>
+        </div>
+        <div class="music-track-detail__lyrics-body">
+          <pre class="music-track-detail__lyrics-text"><%= track.lyrics %></pre>
+        </div>
+      </aside>
+    </div>
+  <% } %>
   <% if (relatedTracks && relatedTracks.length) { %>
     <section class="music-track-detail__related">
       <div class="music-track-detail__related-header">
@@ -131,7 +169,7 @@
       <div class="music-track-detail__related-grid">
         <% relatedTracks.forEach((relatedTrack) => { %>
           <% const relatedCoverUrl = relatedTrack.cover_image ? getOriginalImageUrl('music', relatedTrack.cover_image) : ''; %>
-          <a href="/music/<%= relatedTrack.slug %>" class="music-track-detail__related-card">
+          <a href="/music/<%= relatedTrack.slug %><%= navigationSuffix %>" class="music-track-detail__related-card">
             <div class="music-track-detail__related-cover-wrap">
               <% if (relatedCoverUrl) { %>
                 <img src="<%= relatedCoverUrl %>" alt="<%= relatedTrack.title %> cover" class="music-track-detail__related-cover" loading="lazy" decoding="async" width="140" height="140">

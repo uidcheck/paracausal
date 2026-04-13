@@ -30,6 +30,8 @@
   <label>Shared Album: <input type="text" name="default_album"></label>
   <label>Shared Year: <input type="number" name="default_year"></label>
   <label>Shared Description: <textarea name="shared_description" placeholder="Album description"></textarea></label>
+  <label>Shared Lyrics: <textarea name="shared_lyrics" placeholder="Applied to every uploaded track"></textarea></label>
+  <p style="font-size:0.8rem;color:#888; margin-top:-0.5rem;">Use shared lyrics only when every uploaded track should receive the same lyrics. You can edit individual tracks afterwards.</p>
   <label>Status:
     <select name="publication_status">
       <% publicationStatusOptions.forEach((option) => { %>

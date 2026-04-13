@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS music (
   album TEXT,
   year INTEGER,
   description TEXT,
+  lyrics TEXT,
   publication_status TEXT NOT NULL DEFAULT 'published',
   published_at DATETIME,
   sort_order INTEGER NOT NULL DEFAULT 0,

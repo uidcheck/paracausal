@@ -59,7 +59,7 @@
             data-cover-url="<%= track.cover_image ? getOriginalImageUrl('music', track.cover_image) : '' %>"
             data-cover-alt="<%= track.title %> cover"
             data-music-id="<%= track.id %>">
-            <a href="/music/<%= track.slug %>" class="music-card__cover-link" aria-label="Open <%= track.title %>">
+            <a href="/music/<%= track.slug %><%= musicDetailQuery || '' %>" class="music-card__cover-link" aria-label="Open <%= track.title %>">
               <div class="cover-container">
                 <% if (track.cover_image) { %>
                   <img src="<%= getOriginalImageUrl('music', track.cover_image) %>" alt="<%= track.title %> cover" class="cover" loading="<%= index < 4 ? 'eager' : 'lazy' %>" decoding="async" width="300" height="300">
@@ -70,7 +70,7 @@
                 <% } %>
               </div>
             </a>
-            <h3><a href="/music/<%= track.slug %>" class="music-card__title-link"><%= track.title %></a></h3>
+            <h3><a href="/music/<%= track.slug %><%= musicDetailQuery || '' %>" class="music-card__title-link"><%= track.title %></a></h3>
             <p class="meta">
               <% if (track.artist) { %><span><%= track.artist %></span><% } %>
               <% if (track.album) { %><span><%= track.artist ? ' - ' : '' %><%= track.album %></span><% } %>
