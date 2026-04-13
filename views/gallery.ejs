@@ -42,14 +42,15 @@
       <div class="gallery-grid">
         <% images.forEach((img, index) => { %>
           <% const imageUrl = getOriginalImageUrl('images', img.filename); %>
+          <% const detailHref = img.slug ? ('/gallery/' + encodeURIComponent(img.slug)) : ('/gallery/' + img.id); %>
           <% const captionText = typeof img.caption === 'string' ? img.caption.trim() : ''; %>
           <div class="gallery-item">
-            <a href="/gallery/<%= img.slug %>" class="gallery-item__image-link">
+            <a href="<%= detailHref %>" class="gallery-item__image-link">
               <% if (imageUrl) { %>
                 <img src="<%= imageUrl %>" alt="<%= img.title %>" loading="<%= index < 6 ? 'eager' : 'lazy' %>" decoding="async" width="480" height="480">
               <% } %>
             </a>
-            <h3><a href="/gallery/<%= img.slug %>" class="gallery-item__title-link"><%= img.title %></a></h3>
+            <h3><a href="<%= detailHref %>" class="gallery-item__title-link"><%= img.title %></a></h3>
             <% if (captionText) { %>
               <p><%= captionText %></p>
             <% } %>

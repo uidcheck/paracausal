@@ -34,8 +34,9 @@
   <h3>Gallery</h3>
   <ul>
     <% galleryResults.forEach(img => { %>
+      <% const galleryHref = img.slug ? ('/gallery/' + encodeURIComponent(img.slug)) : ('/gallery/' + img.id); %>
       <li>
-        <a href="/gallery/<%= img.slug %>"><%= img.title %></a>
+        <a href="<%= galleryHref %>"><%= img.title %></a>
         <%- include('partials/tag-pills', { tags: img.tags, className: 'tag-pill-row-compact', tagContext: 'gallery' }) %>
       </li>
     <% }) %>

@@ -126,12 +126,13 @@
               <h3><%= section.title %></h3>
               <div class="collection-grid">
                 <% section.items.forEach((item) => { %>
+                  <% const galleryHref = item.slug ? ('/gallery/' + encodeURIComponent(item.slug)) : ('/gallery/' + item.id); %>
                   <article class="collection-card">
                     <% if (item.filename) { %>
-                      <a href="/gallery/<%= item.slug %>" class="collection-card__image-link"><img src="<%= getOriginalImageUrl('images', item.filename) %>" alt="<%= item.title || 'Gallery image' %>" class="collection-card__image"></a>
+                      <a href="<%= galleryHref %>" class="collection-card__image-link"><img src="<%= getOriginalImageUrl('images', item.filename) %>" alt="<%= item.title || 'Gallery image' %>" class="collection-card__image"></a>
                     <% } %>
                     <div class="collection-card__body">
-                      <h4><a href="/gallery/<%= item.slug %>"><%= item.title || 'Untitled image' %></a></h4>
+                      <h4><a href="<%= galleryHref %>"><%= item.title || 'Untitled image' %></a></h4>
                       <% if (item.caption) { %><p><%= item.caption %></p><% } %>
                     </div>
                   </article>

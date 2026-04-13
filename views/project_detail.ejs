@@ -65,7 +65,8 @@
         <h3>Linked gallery items</h3>
         <ul>
           <% relatedGallery.forEach((image) => { %>
-            <li><a href="/gallery/<%= image.slug %>"><%= image.title || 'Untitled image' %></a></li>
+            <% const galleryHref = image.slug ? ('/gallery/' + encodeURIComponent(image.slug)) : ('/gallery/' + image.id); %>
+            <li><a href="<%= galleryHref %>"><%= image.title || 'Untitled image' %></a></li>
           <% }) %>
         </ul>
       <% } %>

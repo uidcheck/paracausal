@@ -28,6 +28,18 @@ const TAG_CONTEXT_LINKS = {
   projects: { label: 'Back to projects', href: '/projects' },
 };
 
+function buildGalleryPath(item) {
+  if (!item) return '/gallery';
+
+  const rawIdentifier = item.slug || item.id;
+  if (rawIdentifier === null || typeof rawIdentifier === 'undefined') {
+    return '/gallery';
+  }
+
+  const identifier = String(rawIdentifier).trim();
+  return identifier ? `/gallery/${encodeURIComponent(identifier)}` : '/gallery';
+}
+
 function getNormalizedTagContext(value) {
   const context = String(value || '').trim().toLowerCase();
   return TAG_CONTEXT_LINKS[context] ? context : '';
@@ -451,7 +463,7 @@ async function buildHomepageEditorialSections(db, appLocals) {
             title: galleryItem.title || 'Untitled image',
             meta: galleryItem.category || 'Image',
             description: galleryItem.caption || '',
-            href: `/gallery/${galleryItem.slug}`,
+            href: buildGalleryPath(galleryItem),
             actionLabel: 'View image',
             imageUrl: galleryItem.filename ? appLocals.getOriginalImageUrl('images', galleryItem.filename) : '',
           },
@@ -961,7 +973,36 @@ router.get('/gallery', async (req, res) => {
 router.get('/gallery/:slug', async (req, res) => {
   const db = req.app.locals.db;
   const previewToken = getRequestedPreviewToken(req);
-  const image = await loadPreviewableContentBySlug(db, 'gallery', req.params.slug, previewToken);
+  const requestedIdentifier = String(req.params.slug || '').trim();
+  let image = null;
+
+  if (/^\d+$/.test(requestedIdentifier)) {
+    const legacyId = parseInt(requestedIdentifier, 10);
+    image = previewToken
+      ? await db.get(
+        `SELECT *
+         FROM gallery
+         WHERE id = ?
+           AND (preview_token = ? OR ${getPublicDirectVisibilityClause()})`,
+        legacyId,
+        previewToken
+      )
+      : await db.get(
+        `SELECT *
+         FROM gallery
+         WHERE id = ?
+           AND ${getPublicDirectVisibilityClause()}`,
+        legacyId
+      );
+
+    if (image && image.slug) {
+      return res.redirect(301, buildGalleryPath(image));
+    }
+  }
+
+  if (!image) {
+    image = await loadPreviewableContentBySlug(db, 'gallery', requestedIdentifier, previewToken);
+  }
 
   if (!image) {
     return res.status(404).render('404');
@@ -969,12 +1010,13 @@ router.get('/gallery/:slug', async (req, res) => {
 
   await attachTagsToItems(db, 'gallery', [image]);
   const galleryConnections = await loadGalleryConnections(db, image.id);
+  const galleryPath = buildGalleryPath(image);
   trackPublicPageView(req, {
-    requestPath: `/gallery/${image.slug}`,
+    requestPath: galleryPath,
     pageType: 'gallery_detail',
     contentType: 'gallery',
     contentId: image.id,
-    contentSlug: image.slug,
+    contentSlug: image.slug || null,
   });
 
   return res.render('gallery_detail', {
@@ -985,7 +1027,7 @@ router.get('/gallery/:slug', async (req, res) => {
       title: image.title || 'Gallery Item',
       description: image.caption || image.category || 'A visual piece from PARACAUSAL.',
       image: image.filename ? req.app.locals.getOriginalImageUrl('images', image.filename) : '',
-      canonicalPath: `/gallery/${image.slug}`,
+      canonicalPath: galleryPath,
     }),
   });
 });

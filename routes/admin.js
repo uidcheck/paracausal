@@ -47,6 +47,18 @@ const { attachTagsToItems, syncContentTags } = require('../utils/tags');
 
 const router = createAsyncRouter();
 
+function buildGalleryPath(item) {
+  if (!item) return '/gallery';
+
+  const rawIdentifier = item.slug || item.id;
+  if (rawIdentifier === null || typeof rawIdentifier === 'undefined') {
+    return '/gallery';
+  }
+
+  const identifier = String(rawIdentifier).trim();
+  return identifier ? `/gallery/${encodeURIComponent(identifier)}` : '/gallery';
+}
+
 ffmpeg.setFfmpegPath(ffmpegStatic);
 
 const MUSIC_UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'music');
@@ -2341,11 +2353,12 @@ router.get('/gallery/:id/edit', async (req, res) => {
   const selected = existing.map(e => e.collection_id);
   const relationshipOptions = await getAdminRelationshipOptions(db);
   const relationshipSelections = await getGallerySelectionState(db, req.params.id);
-  const publicUrl = buildPublicUrl(req, `/gallery/${img.slug}`);
+  const publicPath = buildGalleryPath(img);
+  const publicUrl = buildPublicUrl(req, publicPath);
   res.render('admin/gallery/edit', {
     img,
     publicUrl,
-    previewUrl: buildPreviewUrl(`/gallery/${img.slug}`, img.preview_token, req),
+    previewUrl: buildPreviewUrl(publicPath, img.preview_token, req),
     collections,
     collectionIds: selected,
     publicationStatusOptions: PUBLICATION_STATUS_OPTIONS,
