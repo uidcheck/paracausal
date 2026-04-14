@@ -17,6 +17,7 @@ let saveTimer = null;
 const PLAYER_STATE_KEY = 'paracausalPlayerState.v2';
 const LEGACY_PLAYER_STATE_KEY = 'nightvaultPlayerState.v2';
 const PLAYER_QUEUE_PANEL_OPEN_KEY = 'paracausalPlayerQueuePanelOpen';
+const PENDING_MUSIC_NAVIGATION_PLAY_KEY = 'paracausalPendingMusicNavigationPlay';
 const TRACK_URL_BASE = '/uploads/music/';
 const REPEAT_MODE_SEQUENCE = ['off', 'one', 'all'];
 let shuffleEnabled = false;
@@ -25,6 +26,7 @@ let playbackOrder = [];
 let playbackOrderPosition = -1;
 let footerMusicAutoPausedByVideo = false;
 let queuePanelOpen = typeof localStorage !== 'undefined' && localStorage.getItem(PLAYER_QUEUE_PANEL_OPEN_KEY) === 'true';
+let pendingMusicNavigationPlayback = null;
 
 function migrateLegacyPlayerState() {
   if (typeof localStorage === 'undefined') return;
@@ -167,6 +169,77 @@ function getTrackDataFromCard(card) {
     coverAlt: card.dataset.coverAlt,
     id: card.dataset.musicId || null,
   });
+}
+
+function clearPendingMusicNavigationPlayback() {
+  pendingMusicNavigationPlayback = null;
+
+  if (typeof sessionStorage === 'undefined') return;
+
+  try {
+    sessionStorage.removeItem(PENDING_MUSIC_NAVIGATION_PLAY_KEY);
+  } catch (err) {
+    // Ignore storage access failures.
+  }
+}
+
+function getPendingMusicNavigationPlayback() {
+  if (!pendingMusicNavigationPlayback && typeof sessionStorage !== 'undefined') {
+    try {
+      const rawValue = sessionStorage.getItem(PENDING_MUSIC_NAVIGATION_PLAY_KEY);
+      if (rawValue) {
+        const parsedValue = JSON.parse(rawValue);
+        pendingMusicNavigationPlayback = {
+          filename: typeof parsedValue.filename === 'string' ? parsedValue.filename.trim() : '',
+          slug: typeof parsedValue.slug === 'string' ? parsedValue.slug.trim() : '',
+          setAt: Number.isFinite(parsedValue.setAt) ? parsedValue.setAt : 0,
+        };
+      }
+    } catch (err) {
+      clearPendingMusicNavigationPlayback();
+      return null;
+    }
+  }
+
+  if (!pendingMusicNavigationPlayback) {
+    return null;
+  }
+
+  if (!pendingMusicNavigationPlayback.filename && !pendingMusicNavigationPlayback.slug) {
+    clearPendingMusicNavigationPlayback();
+    return null;
+  }
+
+  if (pendingMusicNavigationPlayback.setAt && Date.now() - pendingMusicNavigationPlayback.setAt > 30000) {
+    clearPendingMusicNavigationPlayback();
+    return null;
+  }
+
+  return pendingMusicNavigationPlayback;
+}
+
+function setPendingMusicNavigationPlayback(track) {
+  if (!track) return;
+
+  const pendingTrack = {
+    filename: typeof track.filename === 'string' ? track.filename.trim() : '',
+    slug: typeof track.slug === 'string' ? track.slug.trim() : '',
+    setAt: Date.now(),
+  };
+
+  if (!pendingTrack.filename && !pendingTrack.slug) {
+    return;
+  }
+
+  pendingMusicNavigationPlayback = pendingTrack;
+
+  if (typeof sessionStorage === 'undefined') return;
+
+  try {
+    sessionStorage.setItem(PENDING_MUSIC_NAVIGATION_PLAY_KEY, JSON.stringify(pendingTrack));
+  } catch (err) {
+    // Ignore storage access failures.
+  }
 }
 
 function renderTagPills(container, tags) {
@@ -689,13 +762,11 @@ function waitForAnimationFrame() {
   });
 }
 
-function getTransitionAudioOptions(source) {
-  const isManualSkip = source === 'manual-next' || source === 'manual-prev';
-
+function getTransitionAudioOptions() {
   return {
-    flushSource: isManualSkip,
+    flushSource: false,
     resetPlaybackHead: true,
-    awaitFlushFrame: isManualSkip,
+    awaitFlushFrame: false,
   };
 }
 
@@ -1545,6 +1616,7 @@ function navigateMusicDetailToTrack(track) {
   const targetUrl = getMusicDetailNavigationUrl(track);
   if (!targetUrl) return;
 
+  setPendingMusicNavigationPlayback(track);
   queueSavePlayerState();
   softNavigate(targetUrl, true).catch((err) => {
     console.error('Music detail navigation failed:', err);
@@ -1847,6 +1919,71 @@ function playStandaloneTrack(track, queueMeta = {}) {
   return true;
 }
 
+function resumePendingMusicNavigationPlayback(root = document.querySelector('[data-music-detail-page]')) {
+  if (!root) return false;
+
+  const pendingTrack = getPendingMusicNavigationPlayback();
+  if (!pendingTrack) return false;
+
+  const detailFilename = (root.dataset.filename || '').trim();
+  const detailSlug = (root.dataset.slug || '').trim();
+  const matchesPendingTrack = (
+    (pendingTrack.filename && detailFilename && pendingTrack.filename === detailFilename)
+    || (pendingTrack.slug && detailSlug && pendingTrack.slug === detailSlug)
+  );
+
+  if (!matchesPendingTrack) {
+    return false;
+  }
+
+  clearPendingMusicNavigationPlayback();
+  bindPlayerControls();
+  if (!wavesurfer) return false;
+
+  if (detailFilename && detailFilename === currentTrackFilename && isWaveSurferPlaying()) {
+    syncMusicDetailPlaybackState();
+    return true;
+  }
+
+  if (detailFilename && detailFilename === currentTrackFilename && isPlayerReady) {
+    const playPromise = wavesurfer.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch((err) => {
+        console.warn('Pending navigation playback resume failed:', err && err.message ? err.message : err);
+      });
+    }
+    queueSavePlayerState();
+    syncMusicDetailPlaybackState();
+    return true;
+  }
+
+  syncMusicDetailQueue(root);
+
+  const detailTrackIndex = getTrackIndexByFilename(detailFilename);
+  if (detailTrackIndex >= 0) {
+    transitionToTrack(detailTrackIndex, true, 'detail-page-nav-resume', {
+      playbackPosition: detailTrackIndex,
+      rebuildOrder: false,
+    });
+    return true;
+  }
+
+  return playStandaloneTrack({
+    filename: detailFilename,
+    slug: detailSlug,
+    title: root.dataset.title,
+    artist: root.dataset.artist,
+    album: root.dataset.album,
+    year: root.dataset.year,
+    description: root.dataset.description,
+    tags: parseSerializedTags(root.dataset.tags),
+    coverUrl: root.dataset.coverUrl,
+    coverAlt: root.dataset.coverAlt,
+  }, {
+    slug: detailSlug || null,
+  });
+}
+
 function initMusicDetailPageFeatures() {
   const root = document.querySelector('[data-music-detail-page]');
   if (!root) {
@@ -1860,6 +1997,7 @@ function initMusicDetailPageFeatures() {
   root.dataset.bound = 'true';
 
   syncMusicDetailQueue(root);
+  resumePendingMusicNavigationPlayback(root);
 
   const copyButton = root.querySelector('[data-copy-track-link]');
   const playerButton = root.querySelector('[data-play-track-player]');
@@ -2025,7 +2163,10 @@ function initMusicDetailPageFeatures() {
 
       const targetIndex = queue.findIndex((track) => track && track.slug === targetSlug);
       if (targetIndex >= 0) {
+        setPendingMusicNavigationPlayback(queue[targetIndex]);
         transitionToTrack(targetIndex, true, 'detail-page-nav', { playbackPosition: targetIndex, rebuildOrder: false });
+      } else {
+        setPendingMusicNavigationPlayback({ slug: targetSlug });
       }
 
       queueSavePlayerState();
@@ -2155,6 +2296,7 @@ function initMusicPageFeatures() {
         if (!shouldHandleSoftNav(link)) return;
 
         event.preventDefault();
+        clearPendingMusicNavigationPlayback();
         softNavigate(link.href).catch((err) => {
           console.error('Music link navigation failed:', err);
           window.location.assign(link.href);
