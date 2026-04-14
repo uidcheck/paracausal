@@ -2495,6 +2495,7 @@ function initVideoControls() {
     const durationSpan = control.querySelector('.duration');
     const fullscreenBtn = control.querySelector('.fullscreen');
     let isSeeking = false;
+    let lastVolume = Number(video.volume) > 0 ? Number(video.volume) : 1;
     let resumeFooterMusicOnPause = false;
 
     function getFullscreenElement() {
@@ -2562,8 +2563,36 @@ function initVideoControls() {
     function updateMuteLabel() {
       if (!muteToggleBtn) return;
       const isMuted = video.muted || Number(video.volume) === 0;
-      muteToggleBtn.textContent = isMuted ? 'Unmute' : 'Mute';
+      const volumeState = isMuted
+        ? 'muted'
+        : (Number(video.volume) <= 0.5 ? 'low' : 'high');
+      muteToggleBtn.dataset.volumeState = volumeState;
       muteToggleBtn.setAttribute('aria-label', isMuted ? 'Unmute video' : 'Mute video');
+    }
+
+    function getSeekTargetTime() {
+      if (!seekSlider || !Number.isFinite(video.duration) || video.duration <= 0) {
+        return 0;
+      }
+
+      return (Number(seekSlider.value) / 1000) * video.duration;
+    }
+
+    function previewSeekTarget() {
+      if (!seekSlider || !Number.isFinite(video.duration) || video.duration <= 0) return;
+
+      const nextTime = getSeekTargetTime();
+      video.currentTime = nextTime;
+      if (currentTimeSpan) {
+        currentTimeSpan.textContent = formatTime(nextTime);
+      }
+    }
+
+    function finishSeekInteraction() {
+      if (!isSeeking) return;
+      isSeeking = false;
+      updateTimeDisplays();
+      revealControls();
     }
 
     function updateSeekSlider() {
@@ -2647,6 +2676,9 @@ function initVideoControls() {
       await resumeFooterMusicAfterVideo();
     });
     video.addEventListener('volumechange', () => {
+      if (!video.muted && Number(video.volume) > 0) {
+        lastVolume = Number(video.volume);
+      }
       if (volumeSlider) {
         volumeSlider.value = String(video.muted ? 0 : video.volume);
       }
@@ -2664,39 +2696,69 @@ function initVideoControls() {
     }
 
     if (seekSlider) {
+      ['pointerdown', 'mousedown', 'touchstart'].forEach((eventName) => {
+        seekSlider.addEventListener(eventName, () => {
+          isSeeking = true;
+          revealControls();
+        }, { passive: true });
+      });
+
       seekSlider.addEventListener('input', () => {
         isSeeking = true;
-        if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-        const nextTime = (Number(seekSlider.value) / 1000) * video.duration;
-        if (currentTimeSpan) {
-          currentTimeSpan.textContent = formatTime(nextTime);
+        previewSeekTarget();
+      });
+
+      seekSlider.addEventListener('change', () => {
+        previewSeekTarget();
+        finishSeekInteraction();
+      });
+
+      ['pointerup', 'mouseup', 'touchend', 'touchcancel', 'blur'].forEach((eventName) => {
+        seekSlider.addEventListener(eventName, finishSeekInteraction);
+      });
+
+      seekSlider.addEventListener('keydown', (event) => {
+        if (event.key.startsWith('Arrow') || event.key === 'Home' || event.key === 'End' || event.key === 'PageUp' || event.key === 'PageDown') {
+          isSeeking = true;
         }
       });
-      seekSlider.addEventListener('change', () => {
-        if (Number.isFinite(video.duration) && video.duration > 0) {
-          video.currentTime = (Number(seekSlider.value) / 1000) * video.duration;
-        }
-        isSeeking = false;
-        updateTimeDisplays();
+
+      seekSlider.addEventListener('keyup', () => {
+        if (!isSeeking) return;
+        previewSeekTarget();
+        finishSeekInteraction();
       });
     }
 
     if (muteToggleBtn) {
       muteToggleBtn.addEventListener('click', () => {
-        const shouldMute = !(video.muted || Number(video.volume) === 0);
-        video.muted = shouldMute;
-        if (!shouldMute && Number(video.volume) === 0) {
-          video.volume = volumeSlider ? Number(volumeSlider.value || 1) : 1;
+        const isCurrentlyMuted = video.muted || Number(video.volume) === 0;
+
+        if (isCurrentlyMuted) {
+          video.muted = false;
+          video.volume = lastVolume > 0 ? lastVolume : 1;
+        } else {
+          if (Number(video.volume) > 0) {
+            lastVolume = Number(video.volume);
+          }
+          video.muted = true;
         }
+
         updateMuteLabel();
+        revealControls();
       });
     }
 
     if (volumeSlider) {
       volumeSlider.addEventListener('input', (e) => {
-        video.muted = false;
-        video.volume = Number(e.target.value);
+        const nextVolume = Math.max(0, Math.min(1, Number(e.target.value)));
+        video.volume = nextVolume;
+        video.muted = nextVolume === 0;
+        if (nextVolume > 0) {
+          lastVolume = nextVolume;
+        }
         updateMuteLabel();
+        revealControls();
       });
     }
 

@@ -13,7 +13,6 @@
           <video
             id="video-detail"
             class="video-detail-player__media"
-            controls
             playsinline
             preload="metadata"
             controlslist="nodownload noplaybackrate"
@@ -29,8 +28,33 @@
         <span class="current-time">0:00</span>
         <span class="video-controls__time-separator">/</span>
         <span class="duration">0:00</span>
-        <button type="button" class="mute-toggle" aria-label="Mute video">Mute</button>
-        <input type="range" class="volume" min="0" max="1" step="0.05" value="1" aria-label="Video volume">
+        <div class="video-controls__volume-group">
+          <button type="button" class="mute-toggle" aria-label="Mute video" data-volume-state="high">
+            <span class="video-controls__icon video-controls__icon--volume-high" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M14 5v14l-5-4H5V9h4l5-4Z" fill="currentColor"></path>
+                <path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                <path d="M18.5 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+              </svg>
+            </span>
+            <span class="video-controls__icon video-controls__icon--volume-low" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M14 5v14l-5-4H5V9h4l5-4Z" fill="currentColor"></path>
+                <path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+              </svg>
+            </span>
+            <span class="video-controls__icon video-controls__icon--volume-muted" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M14 5v14l-5-4H5V9h4l5-4Z" fill="currentColor"></path>
+                <path d="m17 9 4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+                <path d="m21 9-4 4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+              </svg>
+            </span>
+          </button>
+          <div class="video-controls__volume-popover">
+            <input type="range" class="volume" min="0" max="1" step="0.05" value="1" aria-label="Video volume">
+          </div>
+        </div>
         <button type="button" class="fullscreen" aria-label="Toggle fullscreen">Fullscreen</button>
       </div>
     </div>
