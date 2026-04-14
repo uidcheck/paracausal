@@ -1,7 +1,7 @@
 <%- include('partials/header') %>
 <%- include('partials/messages') %>
 <div class="gallery-detail-view">
-  <a href="/gallery" class="back-link">&larr; Back to gallery</a>
+  <a href="/gallery" class="back-link" data-no-soft-nav="true">&larr; Back to gallery</a>
   <% const imageUrl = getOriginalImageUrl('images', image.filename); %>
 
   <h2><%= image.title || 'Gallery Item' %></h2>
